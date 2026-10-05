@@ -69,30 +69,34 @@ export function AllowLocation() {
   return (
     <Screen title="Allow location" chrome={false}>
       <div className="auth">
-        <div className="logo-mark" aria-hidden="true" />
-        <h1>See stores near you</h1>
-        <p className="lede">
-          Allow location so Price Pantry can list grocery stores
-          within a few miles.
-        </p>
-        <div className="actions">
-          <button
-            className="btn primary"
-            type="button"
-            disabled={busy}
-            onClick={allow}>
-            {busy ? "Checking location..." : "Allow location"}
-          </button>
-          <Link
-            className="btn ghost"
-            to="/location/zip"
-            state={route.state}>
-            Enter a ZIP code
-          </Link>
+        <div className="auth-brand">
+          <div className="logo-mark" aria-hidden="true" />
+          <h1>See stores near you</h1>
+          <p className="lede">
+            Allow location so Price Pantry can list grocery
+            stores within a few miles.
+          </p>
         </div>
-        <p className="fine">
-          You can change this later in Profile.
-        </p>
+        <div className="auth-panel">
+          <div className="actions">
+            <button
+              className="btn primary"
+              type="button"
+              disabled={busy}
+              onClick={allow}>
+              {busy ? "Checking location..." : "Allow location"}
+            </button>
+            <Link
+              className="btn ghost"
+              to="/location/zip"
+              state={route.state}>
+              Enter a ZIP code
+            </Link>
+          </div>
+          <p className="fine">
+            You can change this later in Profile.
+          </p>
+        </div>
       </div>
     </Screen>
   );
@@ -125,50 +129,54 @@ export function EnterZip() {
   return (
     <Screen title="ZIP code" chrome={false}>
       <div className="auth">
-        <div className="logo-mark" aria-hidden="true" />
-        <h1>
-          {denied ? "Location is off" : "Enter a ZIP code"}
-        </h1>
-        <p className="lede">
-          {denied
-            ? "The browser did not share your location. Enter a ZIP code to see nearby stores."
-            : "Use a ZIP code if you would rather not share your location."}
-        </p>
-        <form className="form" onSubmit={onSubmit}>
-          <label className="field">
-            <span>ZIP code</span>
-            <input
-              inputMode="numeric"
-              autoComplete="postal-code"
-              maxLength={5}
-              value={zip}
-              onChange={(event) => {
-                setZip(
-                  event.target.value
-                    .replace(/\D/g, "")
-                    .slice(0, 5)
-                );
-                setError("");
-              }}
-            />
-          </label>
-          {error ? (
-            <p className="error" role="alert">
-              {error}
-            </p>
-          ) : null}
-          <div className="actions">
-            <button className="btn primary" type="submit">
-              Show stores
-            </button>
-            <Link
-              className="btn ghost"
-              to="/location"
-              state={route.state}>
-              Try location again
-            </Link>
-          </div>
-        </form>
+        <div className="auth-brand">
+          <div className="logo-mark" aria-hidden="true" />
+          <h1>
+            {denied ? "Location is off" : "Enter a ZIP code"}
+          </h1>
+          <p className="lede">
+            {denied
+              ? "The browser did not share your location. Enter a ZIP code to see nearby stores."
+              : "Use a ZIP code if you would rather not share your location."}
+          </p>
+        </div>
+        <div className="auth-panel">
+          <form className="form" onSubmit={onSubmit}>
+            <label className="field">
+              <span>ZIP code</span>
+              <input
+                inputMode="numeric"
+                autoComplete="postal-code"
+                maxLength={5}
+                value={zip}
+                onChange={(event) => {
+                  setZip(
+                    event.target.value
+                      .replace(/\D/g, "")
+                      .slice(0, 5)
+                  );
+                  setError("");
+                }}
+              />
+            </label>
+            {error ? (
+              <p className="error" role="alert">
+                {error}
+              </p>
+            ) : null}
+            <div className="actions">
+              <button className="btn primary" type="submit">
+                Show stores
+              </button>
+              <Link
+                className="btn ghost"
+                to="/location"
+                state={route.state}>
+                Try location again
+              </Link>
+            </div>
+          </form>
+        </div>
       </div>
     </Screen>
   );

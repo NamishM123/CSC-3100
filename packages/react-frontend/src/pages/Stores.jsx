@@ -48,40 +48,47 @@ export default function Stores() {
           List
         </button>
       </div>
-      {mode === "map" ? (
-        <div className="map">
-          <span className="map-label">Map</span>
-          {stores.map((store, index) => {
-            const chain = catalog.store_chains.find(
-              (entry) => entry.id === store.chain_id
-            );
-            const left =
-              stores.length === 1
-                ? 50
-                : 16 + (index * 68) / (stores.length - 1);
-            return (
-              <Link
-                key={store.id}
-                className="pin"
-                style={{ left: `${left}%` }}
-                aria-label={store.name}
-                to={`/stores/${store.id}`}>
-                {chain?.code || store.name.slice(0, 2)}
-              </Link>
-            );
-          })}
+      <div
+        className={
+          mode === "map"
+            ? "stores-layout map-mode"
+            : "stores-layout list-mode"
+        }>
+        {mode === "map" ? (
+          <div className="map">
+            <span className="map-label">Map</span>
+            {stores.map((store, index) => {
+              const chain = catalog.store_chains.find(
+                (entry) => entry.id === store.chain_id
+              );
+              const left =
+                stores.length === 1
+                  ? 50
+                  : 16 + (index * 68) / (stores.length - 1);
+              return (
+                <Link
+                  key={store.id}
+                  className="pin"
+                  style={{ left: `${left}%` }}
+                  aria-label={store.name}
+                  to={`/stores/${store.id}`}>
+                  {chain?.code || store.name.slice(0, 2)}
+                </Link>
+              );
+            })}
+          </div>
+        ) : null}
+        <div className="stack cards-grid">
+          {stores.map((store) => (
+            <StoreCard
+              key={store.id}
+              store={store}
+              variant="distance"
+              age={ageFor(store.id)}
+              to={`/stores/${store.id}`}
+            />
+          ))}
         </div>
-      ) : null}
-      <div className="stack">
-        {stores.map((store) => (
-          <StoreCard
-            key={store.id}
-            store={store}
-            variant="distance"
-            age={ageFor(store.id)}
-            to={`/stores/${store.id}`}
-          />
-        ))}
       </div>
       <button
         type="button"

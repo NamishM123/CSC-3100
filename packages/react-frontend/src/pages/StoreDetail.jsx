@@ -76,7 +76,7 @@ export default function StoreDetail() {
           onChange={(event) => setQuery(event.target.value)}
         />
       </form>
-      <div className="stack">
+      <div className="stack cards-grid">
         {rows.map((row) => (
           <Link
             key={row.id}

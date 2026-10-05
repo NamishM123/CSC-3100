@@ -171,103 +171,112 @@ export default function ProductDetail() {
           </button>
         </div>
       }>
-      <div className="product-head">
-        <div className="photo">Photo</div>
-        <div>
-          <h2 className="product-title">{detailTitle}</h2>
-          <p className="muted">
-            {product.category} | {product.size_label}
-          </p>
-          <div className="chips tight">
-            {(product.dietary || []).map((tag) => (
-              <span key={tag} className="tag">
-                {tag}
-              </span>
-            ))}
+      <div className="product-layout">
+        <div className="product-head">
+          <div className="photo">Photo</div>
+          <div>
+            <h2 className="product-title">{detailTitle}</h2>
+            <p className="muted">
+              {product.category} | {product.size_label}
+            </p>
+            <div className="chips tight">
+              {(product.dietary || []).map((tag) => (
+                <span key={tag} className="tag">
+                  {tag}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="section-title">
-        <h2>Price by store</h2>
-      </div>
-      {hideStale ? (
-        <button
-          type="button"
-          className="text-link inline"
-          onClick={() => setHideStale(false)}>
-          Show older prices
-        </button>
-      ) : null}
-      <div className="stack">
-        {visible.map((row) => {
-          const stale = isStale(row.updated_at, DEMO_NOW);
-          return (
+        <div className="product-prices">
+          <div className="section-title">
+            <h2>Price by store</h2>
+          </div>
+          {hideStale ? (
             <button
-              key={row.id}
               type="button"
-              className="card price-row"
-              onClick={() => {
-                if (stale) setPickedStale(row);
-                else setChartStoreId(row.store_id);
-              }}>
-              <div>
-                <div className="name-line">
-                  <strong>{row.store.name}</strong>
-                  {row.id === cheapestId ? (
-                    <span className="badge cheap">
-                      Cheapest
-                    </span>
-                  ) : null}
-                  {row.is_sale ? (
-                    <span className="badge sale">Sale</span>
-                  ) : null}
-                  {stale ? (
-                    <span className="badge old">
-                      {ageOld(row.updated_at, DEMO_NOW)}
-                    </span>
-                  ) : null}
-                </div>
-                <p className="muted">
-                  {miles(row.store.distance_mi)}
-                </p>
-              </div>
-              <div className="price-col">
-                <strong>{money(row.price)}</strong>
-                <span>{unitCaption(row, product)}</span>
-              </div>
+              className="text-link inline"
+              onClick={() => setHideStale(false)}>
+              Show older prices
             </button>
-          );
-        })}
-      </div>
-      {visible.length === 0 ? (
-        <p className="muted">
-          No fresh prices at stores within {radiusMi} mi.
-        </p>
-      ) : null}
+          ) : null}
+          <div className="stack cards-grid">
+            {visible.map((row) => {
+              const stale = isStale(row.updated_at, DEMO_NOW);
+              return (
+                <button
+                  key={row.id}
+                  type="button"
+                  className="card price-row"
+                  onClick={() => {
+                    if (stale) setPickedStale(row);
+                    else setChartStoreId(row.store_id);
+                  }}>
+                  <div>
+                    <div className="name-line">
+                      <strong>{row.store.name}</strong>
+                      {row.id === cheapestId ? (
+                        <span className="badge cheap">
+                          Cheapest
+                        </span>
+                      ) : null}
+                      {row.is_sale ? (
+                        <span className="badge sale">Sale</span>
+                      ) : null}
+                      {stale ? (
+                        <span className="badge old">
+                          {ageOld(row.updated_at, DEMO_NOW)}
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="muted">
+                      {miles(row.store.distance_mi)}
+                    </p>
+                  </div>
+                  <div className="price-col">
+                    <strong>{money(row.price)}</strong>
+                    <span>{unitCaption(row, product)}</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          {visible.length === 0 ? (
+            <p className="muted">
+              No fresh prices at stores within {radiusMi} mi.
+            </p>
+          ) : null}
+        </div>
 
-      <div className="section-title">
-        <h2>Price history (30 days)</h2>
-        <span className="muted">{chartRow?.store.name}</span>
-      </div>
-      {history.length ? (
-        <div className="chart">
-          <PriceChart points={history} />
-          <div className="chart-labels">
-            <span>
-              {shortDate(history[0].recorded_on)}:{" "}
-              {money(history[0].price)}
-            </span>
-            <span className="today">
-              Today: {money(history[history.length - 1].price)}
+        <div className="product-history">
+          <div className="section-title">
+            <h2>Price history (30 days)</h2>
+            <span className="muted">
+              {chartRow?.store.name}
             </span>
           </div>
+          {history.length ? (
+            <div className="chart">
+              <PriceChart points={history} />
+              <div className="chart-labels">
+                <span>
+                  {shortDate(history[0].recorded_on)}:{" "}
+                  {money(history[0].price)}
+                </span>
+                <span className="today">
+                  Today:{" "}
+                  {money(history[history.length - 1].price)}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <p className="muted">
+              No 30 day history for this store yet.
+            </p>
+          )}
         </div>
-      ) : (
-        <p className="muted">
-          No 30 day history for this store yet.
-        </p>
-      )}
+      </div>
 
       {warningRow ? (
         <Sheet title="This price is old" onClose={closeWarning}>

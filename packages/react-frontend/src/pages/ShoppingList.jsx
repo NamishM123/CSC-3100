@@ -58,9 +58,35 @@ export default function ShoppingList() {
     <Screen
       title={list?.name || "Lists"}
       chrome={false}
+      className="list-screen"
       dock={
         rows.length ? (
           <>
+            <div className="desktop-only summary-panel">
+              <p className="summary-kicker">Cheapest total</p>
+              <div className="summary-figure">
+                <span>
+                  {plan.stops.length
+                    ? `Split across ${plan.stops.length} ${
+                        plan.stops.length === 1
+                          ? "store"
+                          : "stores"
+                      }`
+                    : "Split across stores"}
+                </span>
+                <strong>
+                  {plan.stops.length
+                    ? money(plan.splitTotal)
+                    : "Unavailable"}
+                </strong>
+              </div>
+              {plan.savings > 0 ? (
+                <p className="save">
+                  Save {money(plan.savings)} compared with one
+                  store
+                </p>
+              ) : null}
+            </div>
             <div className="total-line">
               <span>Cheapest single store</span>
               <strong>{singleLabel}</strong>
