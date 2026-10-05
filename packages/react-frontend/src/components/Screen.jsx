@@ -5,6 +5,7 @@ export default function Screen({
   title,
   backTo,
   chrome = true,
+  className = "",
   children,
   dock
 }) {
@@ -15,7 +16,8 @@ export default function Screen({
   }, [title]);
 
   return (
-    <div className="screen">
+    <div
+      className={className ? `screen ${className}` : "screen"}>
       <div className="screen-body">
         {chrome ? (
           <div className="topbar">

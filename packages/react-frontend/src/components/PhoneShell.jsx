@@ -17,6 +17,39 @@ function tabFor(pathname) {
   return null;
 }
 
+function desktopTab(pathname) {
+  if (
+    pathname === "/list" ||
+    pathname.startsWith("/list/") ||
+    pathname === "/route"
+  ) {
+    return "list";
+  }
+  if (
+    pathname === "/stores" ||
+    pathname.startsWith("/stores/")
+  ) {
+    return "stores";
+  }
+  if (pathname === "/profile") return "profile";
+  if (
+    pathname === "/" ||
+    pathname === "/search" ||
+    pathname.startsWith("/product")
+  ) {
+    return "home";
+  }
+  return null;
+}
+
+function isPublic(pathname) {
+  return (
+    pathname === "/sign-in" ||
+    pathname === "/sign-up" ||
+    pathname.startsWith("/location")
+  );
+}
+
 function StatusBar() {
   return (
     <div className="status" aria-hidden="true">
@@ -48,6 +81,37 @@ function StatusBar() {
   );
 }
 
+function DesktopNav({ pathname }) {
+  const active = desktopTab(pathname);
+  return (
+    <header className="desktop-nav">
+      <div className="desktop-nav-inner">
+        <Link className="brand" to="/">
+          <span className="brand-mark" aria-hidden="true" />
+          Price Pantry
+        </Link>
+        <nav className="desktop-links" aria-label="Primary">
+          {TABS.map((tab) => (
+            <Link
+              key={tab.id}
+              to={tab.to}
+              className={
+                tab.id === active
+                  ? "desktop-link active"
+                  : "desktop-link"
+              }
+              aria-current={
+                tab.id === active ? "page" : undefined
+              }>
+              {tab.label}
+            </Link>
+          ))}
+        </nav>
+      </div>
+    </header>
+  );
+}
+
 function TabBar({ active }) {
   return (
     <nav className="tabs" aria-label="Primary">
@@ -71,14 +135,17 @@ export default function PhoneShell() {
   const active = tabFor(pathname);
 
   useEffect(() => {
-    const body = document.querySelector(".screen-body");
-    if (body) body.scrollTop = 0;
+    document.querySelector(".screen-body")?.scrollTo(0, 0);
+    document.querySelector(".phone-body")?.scrollTo(0, 0);
   }, [pathname, search]);
 
   return (
     <OverlayProvider node={node}>
       <div className="stage">
         <div className="phone">
+          {isPublic(pathname) ? null : (
+            <DesktopNav pathname={pathname} />
+          )}
           <StatusBar />
           <div className="phone-body">
             <Outlet />

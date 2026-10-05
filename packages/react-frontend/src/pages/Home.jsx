@@ -40,7 +40,7 @@ export default function Home() {
   }
 
   return (
-    <Screen title="Home" chrome={false}>
+    <Screen title="Home" chrome={false} className="home-page">
       <h1 className="hello">Hi {firstName(user?.name)}</h1>
       <p className="hello-sub">
         {location?.city} {location?.zip}
@@ -99,7 +99,7 @@ export default function Home() {
         <h2>Nearby stores</h2>
         <Link to="/stores">See all</Link>
       </div>
-      <div className="stack">
+      <div className="stack cards-grid">
         {nearby.slice(0, 3).map((store) => (
           <StoreCard
             key={store.id}
@@ -113,7 +113,7 @@ export default function Home() {
       <div className="section-title">
         <h2>Your lists</h2>
       </div>
-      <div className="stack">
+      <div className="stack cards-grid">
         {lists.map((list) => {
           const count = items.filter(
             (item) => item.list_id === list.id

@@ -17,7 +17,10 @@ export default function Profile() {
     .toUpperCase();
 
   return (
-    <Screen title="Profile" chrome={false}>
+    <Screen
+      title="Profile"
+      chrome={false}
+      className="profile-page">
       <div className="profile-head">
         <span className="avatar large">{initial}</span>
         <div>

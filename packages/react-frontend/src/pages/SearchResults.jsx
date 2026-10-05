@@ -171,7 +171,7 @@ export default function SearchResults() {
               Matches {dietary.join(", ")}.
             </p>
           ) : null}
-          <div className="stack">
+          <div className="stack cards-grid">
             {rows.map((row) => {
               const stale = isStale(row.updated_at, DEMO_NOW);
               const to = stale
