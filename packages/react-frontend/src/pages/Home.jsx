@@ -10,7 +10,7 @@ import {
 } from "../lib/format.js";
 import { useAppState } from "../state/useAppState.js";
 
-const RADIUS_OPTIONS = [1, 2, 5, 10, 15];
+const RADIUS_OPTIONS = [1, 5, 10, 15];
 
 export default function Home() {
   const {
@@ -28,6 +28,8 @@ export default function Home() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [radiusOpen, setRadiusOpen] = useState(false);
+  const [customRadius, setCustomRadius] = useState("");
+  const [customSelected, setCustomSelected] = useState(false);
   const nearby = [...catalog.stores].sort(
     (a, b) => a.distance_mi - b.distance_mi
   );
@@ -150,15 +152,77 @@ export default function Home() {
                 key={miles}
                 type="button"
                 className={
-                  miles === radiusMi ? "choice on" : "choice"
+                  !customSelected && miles === radiusMi ? "choice on" : "choice"
                 }
                 onClick={() => {
+                  setCustomSelected(false);
                   setRadius(miles);
                   setRadiusOpen(false);
                 }}>
-                {miles} miles
+                {miles} {miles === 1 ? "mile" : "miles"}
               </button>
             ))}
+
+            <button
+              type="button"
+              className={customSelected ? "choice on" : "choice"}
+              onClick={() => {
+                setCustomSelected(true);
+                setCustomRadius(
+                  customRadius || (
+                    !RADIUS_OPTIONS.includes(radiusMi) ? String(radiusMi) : "20"
+                  )
+                );
+              }}
+            >
+              Custom
+            </button>
+
+            {customSelected && (
+              <form
+                className="custom-radius"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  const miles = Number(customRadius);
+
+                  if (
+                    customRadius.trim() === "" ||
+                    !Number.isFinite(miles) ||
+                    miles <= 0 ||
+                    miles > 50
+                  ) {
+                    return;
+                  }
+
+                  setRadius(miles);
+                  setRadiusOpen(false);
+                }}
+              >
+                <label htmlFor="custom-radius-input">
+                  Enter radius in miles (up to 50)
+                </label>
+
+                <div className="custom-radius-row">
+                  <input
+                    id="custom-radius-input"
+                    type="number"
+                    min="0.1"
+                    max="50"
+                    step="any"
+                    placeholder="e.g. 20"
+                    value={customRadius}
+                    onChange={(event) =>
+                      setCustomRadius(event.target.value)
+                    }
+                    required
+                  />
+
+                  <button className="btn primary" type="submit">
+                    Apply
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </Sheet>
       ) : null}

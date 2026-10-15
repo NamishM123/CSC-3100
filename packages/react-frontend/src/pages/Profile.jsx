@@ -6,12 +6,14 @@ import { DIETARY_FILTERS } from "../data/mock.js";
 import { money } from "../lib/format.js";
 import { useAppState } from "../state/useAppState.js";
 
-const RADIUS_OPTIONS = [1, 2, 5, 10, 15];
+const RADIUS_OPTIONS = [1, 5, 10, 15];
 
 export default function Profile() {
   const state = useAppState();
   const navigate = useNavigate();
   const [radiusOpen, setRadiusOpen] = useState(false);
+  const [customRadius, setCustomRadius] = useState("");
+  const [customSelected, setCustomSelected] = useState(false);
   const initial = (state.user?.name || "P")
     .slice(0, 1)
     .toUpperCase();
@@ -207,6 +209,67 @@ export default function Profile() {
                 {miles} miles
               </button>
             ))}
+
+            <button
+              type="button"
+              className={customSelected ? "choice on" : "choice"}
+              onClick={() => {
+                setCustomSelected(true);
+                setCustomRadius(
+                  customRadius || (
+                    !RADIUS_OPTIONS.includes(state.radiusMi) ? String(state.radiusMi) : "20"
+                  )
+                );
+              }}
+            >
+              Custom
+            </button>
+
+            {customSelected && (
+              <form
+                className="custom-radius"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  const miles = Number(customRadius);
+
+                  if (
+                    customRadius.trim() === "" ||
+                    !Number.isFinite(miles) ||
+                    miles <= 0 ||
+                    miles > 50
+                  ) {
+                    return;
+                  }
+
+                  state.setRadius(miles);
+                  setRadiusOpen(false);
+                }}
+              >
+                <label htmlFor="custom-radius-input">
+                  Enter radius in miles (up to 50)
+                </label>
+
+                <div className="custom-radius-row">
+                  <input
+                    id="custom-radius-input"
+                    type="number"
+                    min="0.1"
+                    max="50"
+                    step="any"
+                    placeholder="e.g. 20"
+                    value={customRadius}
+                    onChange={(event) =>
+                      setCustomRadius(event.target.value)
+                    }
+                    required
+                  />
+
+                  <button className="btn primary" type="submit">
+                    Apply
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </Sheet>
       ) : null}
