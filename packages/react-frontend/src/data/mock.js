@@ -427,7 +427,7 @@ export const shopping_list_items = [
 
 export const search_history = [
   { id: "search-1", term: "banana" },
-  { id: "search-2", term: "bananna" },
+  { id: "search-2", term: "peanut butter" },
   { id: "search-3", term: "oat milk" },
   { id: "search-4", term: "eggs" }
 ];
@@ -485,10 +485,10 @@ function buildPriceHistory() {
     const series = crafted
       ? BANANA_TJ
       : wave(
-          roundMoney(priceRow.price + 0.04),
-          priceRow.price,
-          30
-        );
+        roundMoney(priceRow.price + 0.04),
+        priceRow.price,
+        30
+      );
     series.forEach((value, index) => {
       rows.push({
         id: `hist-${priceRow.id}-${index}`,
