@@ -67,11 +67,10 @@ export default function ShoppingList() {
               <div className="summary-figure">
                 <span>
                   {plan.stops.length
-                    ? `Split across ${plan.stops.length} ${
-                        plan.stops.length === 1
-                          ? "store"
-                          : "stores"
-                      }`
+                    ? `Split across ${plan.stops.length} ${plan.stops.length === 1
+                      ? "store"
+                      : "stores"
+                    }`
                     : "Split across stores"}
                 </span>
                 <strong>
@@ -180,6 +179,16 @@ export default function ShoppingList() {
                   aria-label={`Check off ${product.name}`}
                   checked={item.checked}
                   onChange={() => state.toggleChecked(item.id)}
+                />
+
+                <img
+                  className="list-product-image"
+                  src={product.image_url}
+                  alt={product.name}
+                  loading="lazy"
+                  onError={(event) => {
+                    event.currentTarget.style.visibility = "hidden";
+                  }}
                 />
                 <div>
                   <div className="name-line">

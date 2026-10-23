@@ -173,7 +173,15 @@ export default function ProductDetail() {
       }>
       <div className="product-layout">
         <div className="product-head">
-          <div className="photo">Photo</div>
+          <div className="photo">
+            <img
+              src={product.image_url}
+              alt={product.name}
+              onError={(event) => {
+                event.currentTarget.style.display = "none";
+              }}
+            />
+          </div>
           <div>
             <h2 className="product-title">{detailTitle}</h2>
             <p className="muted">

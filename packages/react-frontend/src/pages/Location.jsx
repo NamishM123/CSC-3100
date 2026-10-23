@@ -71,10 +71,9 @@ export function AllowLocation() {
       <div className="auth">
         <div className="auth-brand">
           <div className="logo-mark" aria-hidden="true" />
-          <h1>See stores near you</h1>
+          <h1>Find groceries near you</h1>
           <p className="lede">
-            Allow location so Price Pantry can list grocery
-            stores within a few miles.
+            Your choice helps us find nearby stores.
           </p>
         </div>
         <div className="auth-panel">
@@ -90,11 +89,11 @@ export function AllowLocation() {
               className="btn ghost"
               to="/location/zip"
               state={route.state}>
-              Enter a ZIP code
+              Use ZIP code instead
             </Link>
           </div>
           <p className="fine">
-            You can change this later in Profile.
+            You can change your location anytime in Profile.
           </p>
         </div>
       </div>
@@ -137,7 +136,7 @@ export function EnterZip() {
           <p className="lede">
             {denied
               ? "The browser did not share your location. Enter a ZIP code to see nearby stores."
-              : "Use a ZIP code if you would rather not share your location."}
+              : "Use a ZIP code to see nearby stores."}
           </p>
         </div>
         <div className="auth-panel">
@@ -166,13 +165,13 @@ export function EnterZip() {
             ) : null}
             <div className="actions">
               <button className="btn primary" type="submit">
-                Show stores
+                Show Stores
               </button>
               <Link
                 className="btn ghost"
                 to="/location"
                 state={route.state}>
-                Try location again
+                Use Location Instead
               </Link>
             </div>
           </form>
