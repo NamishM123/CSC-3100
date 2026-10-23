@@ -6,11 +6,15 @@ function normalize(value) {
     .trim();
 }
 
-function singular(value) {
-  const text = normalize(value);
-  if (text.endsWith("s") && text.length > 3)
+function singularNormalized(text) {
+  if (text.endsWith("s") && text.length > 3) {
     return text.slice(0, -1);
+  }
   return text;
+}
+
+function singular(value) {
+  return singularNormalized(normalize(value));
 }
 
 function scoreProduct(product, query) {
@@ -35,7 +39,9 @@ function scoreProduct(product, query) {
   return 0;
 }
 
-function editDistance(a, b) {
+function editDistance(a, b, limit = Infinity) {
+  if (a === b) return 0;
+  if (Math.abs(a.length - b.length) >= limit) return limit;
   const row = Array.from(
     { length: b.length + 1 },
     (_, index) => index
@@ -43,18 +49,34 @@ function editDistance(a, b) {
   for (let i = 1; i <= a.length; i += 1) {
     let previous = i - 1;
     row[0] = i;
+    let rowBest = i;
     for (let j = 1; j <= b.length; j += 1) {
       const saved = row[j];
       const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-      row[j] = Math.min(
+      const distance = Math.min(
         row[j] + 1,
         row[j - 1] + 1,
         previous + cost
       );
+      row[j] = distance;
+      if (distance < rowBest) rowBest = distance;
       previous = saved;
     }
+    if (rowBest >= limit) return limit;
   }
   return row[b.length];
+}
+
+function candidateForms(product) {
+  const full = normalize(product.name);
+  const forms = new Set([full, singularNormalized(full)]);
+  const first = product.name.split(",")[0];
+  if (first !== product.name) {
+    const head = normalize(first);
+    forms.add(head);
+    forms.add(singularNormalized(head));
+  }
+  return forms;
 }
 
 function suggestionFor(products, query) {
@@ -62,22 +84,26 @@ function suggestionFor(products, query) {
   if (raw.length < 4) return null;
   let best = null;
   let bestDistance = 3;
-  products.forEach((product) => {
-    const first = product.name.split(",")[0];
-    const candidates = [
-      normalize(product.name),
-      singular(product.name),
-      normalize(first),
-      singular(first)
-    ];
-    candidates.forEach((candidate) => {
-      const distance = editDistance(raw, candidate);
+  for (const product of products) {
+    for (const candidate of candidateForms(product)) {
+      if (candidate === raw) continue;
+      if (
+        Math.abs(candidate.length - raw.length) >= bestDistance
+      ) {
+        continue;
+      }
+      const distance = editDistance(
+        raw,
+        candidate,
+        bestDistance
+      );
       if (distance > 0 && distance < bestDistance) {
         bestDistance = distance;
         best = product;
+        if (bestDistance === 1) return best;
       }
-    });
-  });
+    }
+  }
   return best;
 }
 
