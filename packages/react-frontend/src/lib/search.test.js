@@ -134,6 +134,65 @@ test("distance 1 beats an earlier distance 2, ties keep the first", () => {
   assert.equal(referenceSuggestion(tied, "abcd").id, "first");
 });
 
+test("blank queries stay empty and do not suggest a product", () => {
+  const products = [
+    { id: "bananas", name: "Bananas", also_try: [] }
+  ];
+  for (const query of ["", "   ", null, undefined]) {
+    assert.deepEqual(findProduct(products, query), {
+      query: "",
+      primary: null,
+      alsoTry: [],
+      suggestion: null
+    });
+  }
+});
+
+test("exact name outranks a partial match and also_try is honored", () => {
+  const products = [
+    {
+      id: "bread",
+      name: "Banana bread",
+      keywords: ["banana"],
+      also_try: []
+    },
+    {
+      id: "bananas",
+      name: "Bananas",
+      keywords: ["banana"],
+      also_try: ["missing", "bread"]
+    }
+  ];
+  const found = findProduct(products, "bananas");
+  assert.equal(found.primary.id, "bananas");
+  assert.equal(found.suggestion, null);
+  assert.deepEqual(
+    found.alsoTry.map((product) => product.id),
+    ["bread"]
+  );
+});
+
+test("equal scores stay alphabetical and also_try falls back to the next ranks", () => {
+  const products = [
+    {
+      id: "z",
+      name: "Zucchini banana muffins",
+      also_try: ["gone"]
+    },
+    { id: "a", name: "Apple banana muffins", also_try: [] },
+    { id: "e", name: "Extra banana muffins", also_try: [] },
+    { id: "y", name: "Yellow banana muffins", also_try: [] },
+    { id: "bread", name: "Banana bread", also_try: [] }
+  ];
+  const found = findProduct(products, "banana muffins");
+  assert.equal(found.primary.id, "a");
+  assert.equal(found.suggestion, null);
+  assert.deepEqual(
+    found.alsoTry.map((product) => product.id),
+    ["e", "y", "z"]
+  );
+});
+
 test("matches the previous suggestion scan on random catalogs", () => {
   const alphabet = "abcdefghijklmnopqrstuvwxyz";
   let seed = 20261023;
