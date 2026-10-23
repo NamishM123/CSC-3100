@@ -107,45 +107,63 @@ function suggestionFor(products, query) {
   return best;
 }
 
-export function findProduct(products, rawQuery) {
-  const query = (rawQuery || "").trim();
-  if (!query) {
-    return {
-      query: "",
-      primary: null,
-      alsoTry: [],
-      suggestion: null
-    };
-  }
-  const ranked = products
+function emptySearchResult(query) {
+  return {
+    query,
+    primary: null,
+    alsoTry: [],
+    suggestion: null
+  };
+}
+
+function rankProducts(products, query) {
+  return products
     .map((product) => ({
       product,
       score: scoreProduct(product, query)
     }))
-    .filter((entry) => entry.score > 0)
-    .sort(
-      (a, b) =>
-        b.score - a.score ||
-        a.product.name.localeCompare(b.product.name)
-    );
-  if (!ranked.length) {
-    return {
-      query,
-      primary: null,
-      alsoTry: [],
-      suggestion: suggestionFor(products, query)
-    };
-  }
-  const primary = ranked[0].product;
+    .filter((entry) => entry.score > 0);
+}
+
+function sortRankedProducts(ranked) {
+  return ranked.sort(
+    (a, b) =>
+      b.score - a.score ||
+      a.product.name.localeCompare(b.product.name)
+  );
+}
+
+function noMatchesSearchResult(query, products) {
+  return {
+    query,
+    primary: null,
+    alsoTry: [],
+    suggestion: suggestionFor(products, query)
+  };
+}
+
+function alsoTryProducts(products, primary, ranked) {
   const related = (primary.also_try || [])
     .map((id) => products.find((product) => product.id === id))
     .filter(Boolean);
+  if (related.length) return related;
+  return ranked.slice(1, 4).map((entry) => entry.product);
+}
+
+export function findProduct(products, rawQuery) {
+  const query = (rawQuery || "").trim();
+  if (!query) return emptySearchResult("");
+  const ranked = sortRankedProducts(
+    rankProducts(products, query)
+  );
+  if (!ranked.length) {
+    return noMatchesSearchResult(query, products);
+  }
+  const primary = ranked[0].product;
   return {
     query,
     primary,
-    alsoTry: related.length
-      ? related
-      : ranked.slice(1, 4).map((entry) => entry.product),
+    alsoTry: alsoTryProducts(products, primary, ranked),
     suggestion: null
   };
 }
