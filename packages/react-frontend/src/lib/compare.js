@@ -74,6 +74,107 @@ export function lowestQuote(options) {
   return quotes[0] || null;
 }
 
+function quoteLookup(active, options) {
+  const quotesByProduct = new Map();
+  const quotesByProductAndStore = new Map();
+
+  [...new Set(active.map((item) => item.product_id))].forEach(
+    (productId) => {
+      const quotes = freshQuotes({ ...options, productId });
+      quotesByProduct.set(productId, quotes);
+      quotesByProductAndStore.set(
+        productId,
+        new Map(quotes.map((quote) => [quote.store.id, quote]))
+      );
+    }
+  );
+
+  return { quotesByProduct, quotesByProductAndStore };
+}
+
+function assignSplitItems(active, productsById, quotesByProduct) {
+  const missing = [];
+  const assignments = [];
+
+  active.forEach((item) => {
+    const product = productsById.get(item.product_id);
+    const quotes = quotesByProduct.get(item.product_id) || [];
+    if (!product || quotes.length === 0) {
+      missing.push(
+        product || { id: item.product_id, name: "Unknown item" }
+      );
+      return;
+    }
+    const best = quotes[0];
+    assignments.push({
+      item,
+      product,
+      store: best.store,
+      line: cents(best.unit * item.quantity),
+      unit: best.unit,
+      updated_at: best.updated_at
+    });
+  });
+
+  return { missing, assignments };
+}
+
+function buildStops(assignments) {
+  const stopsByStore = new Map();
+  assignments.forEach((assignment) => {
+    const stop = stopsByStore.get(assignment.store.id) || {
+      store: assignment.store,
+      items: [],
+      total: 0
+    };
+    stop.items.push(assignment);
+    stop.total = cents(stop.total + assignment.line);
+    stopsByStore.set(assignment.store.id, stop);
+  });
+
+  return [...stopsByStore.values()].sort(
+    (a, b) => a.store.distance_mi - b.store.distance_mi
+  );
+}
+
+function findSingleStorePlan(
+  active,
+  stores,
+  radiusMi,
+  productsById,
+  quotesByProductAndStore
+) {
+  let cheapestPlan = null;
+
+  stores
+    .filter((store) => store.distance_mi <= radiusMi)
+    .forEach((store) => {
+      const items = [];
+      let total = 0;
+      for (const item of active) {
+        const product = productsById.get(item.product_id);
+        const quote = quotesByProductAndStore
+          .get(item.product_id)
+          ?.get(store.id);
+        if (!product || !quote) return;
+        const line = cents(quote.unit * item.quantity);
+        total = cents(total + line);
+        items.push({
+          item,
+          product,
+          line,
+          updated_at: quote.updated_at
+        });
+      }
+      if (items.length !== active.length) return;
+      if (!cheapestPlan || total < cheapestPlan.total) {
+        cheapestPlan = { store, total, items };
+      }
+    });
+
+  return cheapestPlan;
+}
+
 // Greedy split: each list line goes to the cheapest fresh
 // price inside the radius. The one-store plan is the
 // cheapest store that stocks every line. Extra minutes are
@@ -104,105 +205,39 @@ export function compareList({
       oldestUpdatedAt: null
     };
   }
-  const missing = [];
-  const assignments = [];
-
-  active.forEach((item) => {
-    const product = products.find(
-      (entry) => entry.id === item.product_id
-    );
-    const quotes = freshQuotes({
-      productId: item.product_id,
-      prices,
-      stores,
-      radiusMi,
-      includeMember,
-      now,
-      swaps,
-      acceptedSwapIds
-    });
-    if (!product || quotes.length === 0) {
-      missing.push(
-        product || { id: item.product_id, name: "Unknown item" }
-      );
-      return;
-    }
-    const best = quotes[0];
-    assignments.push({
-      item,
-      product,
-      store: best.store,
-      line: cents(best.unit * item.quantity),
-      unit: best.unit,
-      updated_at: best.updated_at
-    });
-  });
-
-  const stopsMap = new Map();
-  assignments.forEach((row) => {
-    const current = stopsMap.get(row.store.id) || {
-      store: row.store,
-      items: [],
-      total: 0
-    };
-    current.items.push(row);
-    current.total = cents(current.total + row.line);
-    stopsMap.set(row.store.id, current);
-  });
-
-  const stops = [...stopsMap.values()].sort(
-    (a, b) => a.store.distance_mi - b.store.distance_mi
+  const productsById = new Map(
+    products.map((product) => [product.id, product])
   );
+  const { quotesByProduct, quotesByProductAndStore } = quoteLookup(
+    active,
+    { prices, stores, radiusMi, includeMember, now, swaps, acceptedSwapIds }
+  );
+  const { missing, assignments } = assignSplitItems(
+    active,
+    productsById,
+    quotesByProduct
+  );
+  const stops = buildStops(assignments);
   const splitTotal = cents(
     stops.reduce((sum, stop) => sum + stop.total, 0)
   );
 
-  let single = null;
-  stores
-    .filter((store) => store.distance_mi <= radiusMi)
-    .forEach((store) => {
-      const lines = [];
-      let total = 0;
-      for (const item of active) {
-        const product = products.find(
-          (entry) => entry.id === item.product_id
-        );
-        const quote = freshQuotes({
-          productId: item.product_id,
-          prices,
-          stores,
-          radiusMi,
-          includeMember,
-          now,
-          swaps,
-          acceptedSwapIds
-        }).find((entry) => entry.store.id === store.id);
-        if (!product || !quote) return;
-        const line = cents(quote.unit * item.quantity);
-        total = cents(total + line);
-        lines.push({
-          item,
-          product,
-          line,
-          updated_at: quote.updated_at
-        });
-      }
-      if (lines.length !== active.length) return;
-      if (!single || total < single.total) {
-        single = { store, total, items: lines };
-      }
-    });
+  const single = findSingleStorePlan(
+    active,
+    stores,
+    radiusMi,
+    productsById,
+    quotesByProductAndStore
+  );
 
   const splitDrive = stops.reduce(
     (sum, stop) => sum + stop.store.drive_minutes,
     0
   );
-  const usedDates = assignments.map((row) => row.updated_at);
-  if (single) {
-    single.items.forEach((row) =>
-      usedDates.push(row.updated_at)
-    );
-  }
+  const usedDates = [
+    ...assignments.map((row) => row.updated_at),
+    ...(single ? single.items.map((row) => row.updated_at) : [])
+  ];
   const dated = usedDates.filter(Boolean).sort();
 
   return {
