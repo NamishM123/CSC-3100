@@ -60,9 +60,24 @@ feeds the 30 day chart.
 - `VITE_SUPABASE_ANON_KEY`
 
 If they are missing, or a query fails, the screen keeps the mock
-rows. Copy `packages/react-frontend/.env.example` to
-`packages/react-frontend/.env` for local Vite. Do not commit
-`.env`.
+rows. To connect a Supabase project locally:
+
+1. Create a Supabase project and open its SQL Editor.
+2. Run [`supabase/schema.sql`](./supabase/schema.sql). It creates the
+   tables, indexes, and read-only demo policies expected by the app.
+3. Copy `packages/react-frontend/.env.example` to
+   `packages/react-frontend/.env.local` and replace both placeholders
+   with the Project URL and publishable (or legacy anon) key from the
+   Supabase **Connect** dialog.
+4. Add catalog rows in the Supabase Table Editor or import rows based on
+   `packages/react-frontend/src/data/mock.js`.
+5. Restart `npm run dev` after changing environment variables.
+
+Do not commit `.env.local`, and never put a Supabase `service_role`
+key in a Vite frontend. The supplied policies are deliberately
+read-only and are appropriate only for the public course-demo data.
+Use Supabase Auth and user-specific RLS policies before storing real
+users' shopping lists.
 
 An empty Supabase table does not wipe the demo. A table replaces
 mock data after it has at least one row.

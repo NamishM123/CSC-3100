@@ -86,6 +86,9 @@ function applyRemote(current, remote) {
   if (remote.price_history?.length) {
     catalog.price_history = remote.price_history;
   }
+  if (remote.product_swaps?.length) {
+    catalog.product_swaps = remote.product_swaps;
+  }
   const next = { ...current, catalog };
   if (!current.listsDirty && remote.shopping_lists?.length) {
     next.lists = remote.shopping_lists;
