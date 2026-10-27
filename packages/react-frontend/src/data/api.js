@@ -16,6 +16,8 @@
 // shopping_list_items: id, list_id, product_id, quantity, checked
 // price_history (optional): id, product_id, store_id,
 //   recorded_on, price
+// product_swaps (optional): id, product_id, store_id, name,
+//   size_label, price
 
 function asArray(value) {
   if (Array.isArray(value)) return value;
@@ -121,6 +123,13 @@ function normalizeHistory(row) {
   };
 }
 
+function normalizeSwap(row) {
+  return {
+    ...row,
+    price: num(row.price)
+  };
+}
+
 async function readTable(supabase, table) {
   const { data, error } = await supabase
     .from(table)
@@ -158,7 +167,8 @@ export async function loadRemoteCatalog() {
       prices,
       shoppingLists,
       shoppingListItems,
-      priceHistory
+      priceHistory,
+      productSwaps
     ] = await Promise.all([
       readTable(supabase, "store_chains"),
       readTable(supabase, "stores"),
@@ -166,7 +176,8 @@ export async function loadRemoteCatalog() {
       readTable(supabase, "prices"),
       readTable(supabase, "shopping_lists"),
       readTable(supabase, "shopping_list_items"),
-      readTable(supabase, "price_history")
+      readTable(supabase, "price_history"),
+      readTable(supabase, "product_swaps")
     ]);
 
     // Empty tables keep the mock catalog so a brand new
@@ -180,7 +191,8 @@ export async function loadRemoteCatalog() {
       shopping_lists: shoppingLists?.map(normalizeList) ?? null,
       shopping_list_items:
         shoppingListItems?.map(normalizeItem) ?? null,
-      price_history: priceHistory?.map(normalizeHistory) ?? null
+      price_history: priceHistory?.map(normalizeHistory) ?? null,
+      product_swaps: productSwaps?.map(normalizeSwap) ?? null
     };
   } catch (error) {
     console.warn("Price Pantry is using mock data.", error);
