@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { loadRemoteCatalog } from "../data/api.js";
 import { AppStateContext } from "./useAppState.js";
+import { useAuthSession } from "./useAuthSession.js";
 import {
   price_history,
   prices,
@@ -51,7 +52,6 @@ function demoLists() {
 
 function freshState() {
   return {
-    user: null,
     location: null,
     catalog: mockCatalog(),
     ...demoLists()
@@ -64,6 +64,7 @@ function loadInitial() {
     const raw = sessionStorage.getItem(STORAGE_KEY);
     if (!raw) return base;
     const saved = JSON.parse(raw);
+    delete saved.user;
     return {
       ...base,
       ...saved,
@@ -107,11 +108,13 @@ function applyRemote(current, remote) {
 function persistable(state) {
   const copy = { ...state };
   delete copy.catalog;
+  delete copy.user;
   return copy;
 }
 
 export function AppStateProvider({ children }) {
   const [state, setState] = useState(loadInitial);
+  const auth = useAuthSession();
 
   useEffect(() => {
     try {
@@ -137,18 +140,7 @@ export function AppStateProvider({ children }) {
 
   const api = {
     ...state,
-    signIn(account) {
-      const email = account.email.trim();
-      const fallback = email.split("@")[0] || "Shopper";
-      const name = (account.name || fallback).trim();
-      setState((current) => ({
-        ...current,
-        user: { name, email }
-      }));
-    },
-    signOut() {
-      setState((current) => ({ ...current, user: null }));
-    },
+    ...auth,
     setLocation(location) {
       setState((current) => ({ ...current, location }));
     },

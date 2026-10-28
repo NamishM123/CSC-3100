@@ -1,125 +1,105 @@
--- Price Pantry's initial Supabase schema.
--- Run this file in the Supabase SQL Editor for a new project.
--- Text IDs are intentional: they match the existing mock IDs, such as
--- "prod-bananas" and "store-tj".
+-- Price Pantry live-lookup schema, matching schema.dbml.
+-- Fresh Supabase projects only: run this file in the Supabase SQL Editor.
+-- For an existing prototype, use migrations/202610280001_live_lookup_schema.sql.
+-- Text IDs, nullability, and timestamps follow the DBML. Job states are enforced
+-- from its status note. The application supplies IDs and observation times.
+-- API pricing access depends on the team's Instacart endpoint permissions.
 
-create table public.store_chains (
+begin;
+
+create table public.users (
   id text primary key,
-  name text not null,
-  code text
+  name text
+);
+
+create table public.search_requests (
+  id text primary key,
+  user_id text not null references public.users(id),
+  query text not null,
+  zip text not null,
+  radius_mi numeric not null,
+  requested_at timestamptz not null
 );
 
 create table public.stores (
   id text primary key,
-  chain_id text references public.store_chains(id),
+  retailer text not null,
   name text not null,
   address text,
-  city text,
-  state text,
-  zip text,
   latitude numeric,
-  longitude numeric,
-  distance_mi numeric,
-  drive_minutes integer,
-  hours_label text
+  longitude numeric
+);
+
+create table public.fetch_jobs (
+  id text primary key,
+  search_request_id text not null references public.search_requests(id),
+  store_id text not null references public.stores(id),
+  status text not null default 'pending'
+    check (status in ('pending', 'running', 'completed', 'failed')),
+  started_at timestamptz,
+  completed_at timestamptz,
+  error_message text
 );
 
 create table public.products (
   id text primary key,
   name text not null,
-  short_name text,
-  list_unit text,
-  category text,
-  size_label text,
-  unit_amount numeric,
-  unit text,
-  dietary jsonb not null default '[]'::jsonb,
-  dietary_conflicts jsonb not null default '[]'::jsonb,
-  dietary_verified boolean not null default false,
-  also_try jsonb not null default '[]'::jsonb,
-  keywords jsonb not null default '[]'::jsonb
+  size_label text
 );
 
-create table public.prices (
+create table public.price_results (
   id text primary key,
-  store_id text not null references public.stores(id),
+  fetch_job_id text not null references public.fetch_jobs(id),
   product_id text not null references public.products(id),
   price numeric not null,
-  regular_price numeric,
-  unit_price numeric,
-  unit text,
-  is_member_price boolean not null default false,
-  is_sale boolean not null default false,
-  in_stock boolean not null default true,
-  updated_at timestamptz,
-  source text
+  currency text not null,
+  unit_caption text,
+  in_stock boolean,
+  source_url text not null,
+  fetched_at timestamptz not null,
+  expires_at timestamptz not null
 );
 
-create table public.product_swaps (
-  id text primary key,
-  product_id text not null references public.products(id),
-  store_id text not null references public.stores(id),
-  name text not null,
-  size_label text,
-  price numeric not null
-);
+create index search_requests_user_id_requested_at_idx
+  on public.search_requests(user_id, requested_at desc);
+create index search_requests_query_location_idx
+  on public.search_requests(query, zip, radius_mi);
+create index fetch_jobs_search_request_id_idx
+  on public.fetch_jobs(search_request_id);
+create index fetch_jobs_store_id_idx on public.fetch_jobs(store_id);
+create index price_results_fetch_job_id_idx on public.price_results(fetch_job_id);
+create index price_results_product_id_expires_at_idx
+  on public.price_results(product_id, expires_at);
+create index price_results_expires_at_idx on public.price_results(expires_at);
 
-create table public.shopping_lists (
-  id text primary key,
-  name text not null,
-  owner_name text,
-  shared_with jsonb not null default '[]'::jsonb
-);
+comment on table public.fetch_jobs is
+  'Tracks API lookup work. Keep jobs while price results reference them.';
+comment on table public.products is
+  'Products recorded as they are discovered through live API lookups.';
+comment on table public.price_results is
+  'Temporary cached observations; store context comes from fetch_job_id.';
+comment on column public.price_results.in_stock is
+  'Null means availability is unknown.';
+comment on column public.price_results.expires_at is
+  'Application code must ignore expired rows and workers must clean them up.';
 
-create table public.shopping_list_items (
-  id text primary key,
-  list_id text not null references public.shopping_lists(id) on delete cascade,
-  product_id text not null references public.products(id),
-  quantity integer not null default 1 check (quantity > 0),
-  checked boolean not null default false
-);
+-- Foreign keys deliberately do not cascade: delete cached results before their
+-- jobs, then search requests. Deleting a search must not silently delete cache.
+-- No scheduler or automatic expiration is created by this schema.
 
-create table public.price_history (
-  id text primary key,
-  product_id text not null references public.products(id),
-  store_id text not null references public.stores(id),
-  recorded_on date not null,
-  price numeric not null
-);
-
-create index prices_product_id_idx on public.prices(product_id);
-create index prices_store_id_idx on public.prices(store_id);
-create index price_history_product_store_idx
-  on public.price_history(product_id, store_id);
-create index shopping_list_items_list_id_idx
-  on public.shopping_list_items(list_id);
-
--- This prototype currently reads data directly from the browser. These
--- policies allow public, read-only demo data. Do not use these policies for
--- real users' private shopping lists; replace them with Auth-based policies
--- before adding persistent user accounts or write operations.
-alter table public.store_chains enable row level security;
+-- Users, searches, jobs, and cached observations are accessible only through
+-- a trusted backend until user-specific Auth policies are designed. Never
+-- expose the service_role key in the frontend.
+alter table public.users enable row level security;
+alter table public.search_requests enable row level security;
 alter table public.stores enable row level security;
+alter table public.fetch_jobs enable row level security;
 alter table public.products enable row level security;
-alter table public.prices enable row level security;
-alter table public.product_swaps enable row level security;
-alter table public.shopping_lists enable row level security;
-alter table public.shopping_list_items enable row level security;
-alter table public.price_history enable row level security;
+alter table public.price_results enable row level security;
 
-create policy "Demo catalog is publicly readable"
-  on public.store_chains for select to anon using (true);
-create policy "Demo stores are publicly readable"
-  on public.stores for select to anon using (true);
-create policy "Demo products are publicly readable"
-  on public.products for select to anon using (true);
-create policy "Demo prices are publicly readable"
-  on public.prices for select to anon using (true);
-create policy "Demo substitutes are publicly readable"
-  on public.product_swaps for select to anon using (true);
-create policy "Demo lists are publicly readable"
-  on public.shopping_lists for select to anon using (true);
-create policy "Demo list items are publicly readable"
-  on public.shopping_list_items for select to anon using (true);
-create policy "Demo price history is publicly readable"
-  on public.price_history for select to anon using (true);
+create policy "Stores are publicly readable"
+  on public.stores for select to anon, authenticated using (true);
+create policy "Products are publicly readable"
+  on public.products for select to anon, authenticated using (true);
+
+commit;
