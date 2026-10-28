@@ -29,10 +29,10 @@ npm run dev
 
 Open http://localhost:5173
 
-Sign in is filled in for the demo account `namish@calpoly.edu`.
-The password `password` signs you in. Use **Demo branch: sign in
-with wrong password** to see the error state. Then allow
-location, or enter ZIP `93405`.
+Create an account with your email and password, confirm the
+email if requested, then sign in. Authentication uses Supabase;
+there are no preset demo credentials. Then allow location, or
+enter ZIP `93405`.
 
 Other scripts:
 
@@ -45,6 +45,34 @@ npm run dev -w express-backend
 `npm run build` builds the React app. `npm run lint` lints the
 frontend and the Express package. The Express server is local
 only. `GET /health` on port 8000 returns `{ "status": "ok" }`.
+
+### Authentication
+
+Set `VITE_SUPABASE_URL` and either
+`VITE_SUPABASE_PUBLISHABLE_KEY` or `VITE_SUPABASE_ANON_KEY` in
+`packages/react-frontend/.env.local`. Restart Vite after
+changing these values. Email/password sign-in and signup use
+Supabase Auth. Signup stores the name as user metadata and waits
+for email confirmation when the project requires it. Sessions
+persist across reloads; sign-out clears the current browser
+session.
+
+For Google login, enable Google in Supabase Authentication's
+provider settings and enter a Google OAuth web client ID and
+secret. In Google Cloud, authorize the callback URL shown by
+Supabase: `https://<project-ref>.supabase.co/auth/v1/callback`.
+Under Supabase Authentication URL Configuration, allow
+`http://localhost:5173/**` for development and the deployed
+`/sign-in` callback URL for production. Both Google and
+confirmation emails return to `/sign-in`, which restores the
+requested app page. See
+[Google provider setup](https://supabase.com/docs/guides/auth/social-login/auth-google)
+and
+[redirect configuration](https://supabase.com/docs/guides/auth/redirect-urls).
+
+Catalog and shopping-list data still use the prototype data
+layer; Supabase Auth integration does not migrate that data to
+the lookup model.
 
 ### Mock data and Supabase
 
@@ -63,21 +91,22 @@ If they are missing, or a query fails, the screen keeps the mock
 rows. To connect a Supabase project locally:
 
 1. Create a Supabase project and open its SQL Editor.
-2. Run [`supabase/schema.sql`](./supabase/schema.sql). It creates the
-   tables, indexes, and read-only demo policies expected by the app.
+2. Run [`supabase/schema.sql`](./supabase/schema.sql). It
+   creates the tables, indexes, and read-only demo policies
+   expected by the app.
 3. Copy `packages/react-frontend/.env.example` to
-   `packages/react-frontend/.env.local` and replace both placeholders
-   with the Project URL and publishable (or legacy anon) key from the
-   Supabase **Connect** dialog.
-4. Add catalog rows in the Supabase Table Editor or import rows based on
-   `packages/react-frontend/src/data/mock.js`.
+   `packages/react-frontend/.env.local` and replace both
+   placeholders with the Project URL and publishable (or legacy
+   anon) key from the Supabase **Connect** dialog.
+4. Add catalog rows in the Supabase Table Editor or import rows
+   based on `packages/react-frontend/src/data/mock.js`.
 5. Restart `npm run dev` after changing environment variables.
 
-Do not commit `.env.local`, and never put a Supabase `service_role`
-key in a Vite frontend. The supplied policies are deliberately
-read-only and are appropriate only for the public course-demo data.
-Use Supabase Auth and user-specific RLS policies before storing real
-users' shopping lists.
+Do not commit `.env.local`, and never put a Supabase
+`service_role` key in a Vite frontend. The supplied policies are
+deliberately read-only and are appropriate only for the public
+course-demo data. Use Supabase Auth and user-specific RLS
+policies before storing real users' shopping lists.
 
 An empty Supabase table does not wipe the demo. A table replaces
 mock data after it has at least one row.

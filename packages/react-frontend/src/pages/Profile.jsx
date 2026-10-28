@@ -5,6 +5,7 @@ import Sheet from "../components/Sheet.jsx";
 import { DIETARY_FILTERS } from "../data/mock.js";
 import { money } from "../lib/format.js";
 import { useAppState } from "../state/useAppState.js";
+import { authErrorMessage } from "../lib/auth.js";
 
 const RADIUS_OPTIONS = [1, 5, 10, 15];
 
@@ -14,6 +15,8 @@ export default function Profile() {
   const [radiusOpen, setRadiusOpen] = useState(false);
   const [customRadius, setCustomRadius] = useState("");
   const [customSelected, setCustomSelected] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const [signOutError, setSignOutError] = useState("");
   const initial = (state.user?.name || "P")
     .slice(0, 1)
     .toUpperCase();
@@ -180,13 +183,28 @@ export default function Profile() {
         <button
           type="button"
           className="btn primary"
-          onClick={() => {
-            state.signOut();
-            navigate("/sign-in", { replace: true });
+          disabled={signingOut}
+          onClick={async () => {
+            setSignOutError("");
+            setSigningOut(true);
+            try {
+              await state.signOut();
+              navigate("/sign-in", { replace: true });
+            } catch (error) {
+              setSignOutError(authErrorMessage(error));
+            } finally {
+              setSigningOut(false);
+            }
           }}>
-          Sign out
+          {signingOut ? "Signing out..." : "Sign out"}
         </button>
       </div>
+
+      {signOutError ? (
+        <p className="error" role="alert">
+          {signOutError}
+        </p>
+      ) : null}
 
       {radiusOpen ? (
         <Sheet
@@ -212,16 +230,18 @@ export default function Profile() {
 
             <button
               type="button"
-              className={customSelected ? "choice on" : "choice"}
+              className={
+                customSelected ? "choice on" : "choice"
+              }
               onClick={() => {
                 setCustomSelected(true);
                 setCustomRadius(
-                  customRadius || (
-                    !RADIUS_OPTIONS.includes(state.radiusMi) ? String(state.radiusMi) : "20"
-                  )
+                  customRadius ||
+                    (!RADIUS_OPTIONS.includes(state.radiusMi)
+                      ? String(state.radiusMi)
+                      : "20")
                 );
-              }}
-            >
+              }}>
               Custom
             </button>
 
@@ -243,8 +263,7 @@ export default function Profile() {
 
                   state.setRadius(miles);
                   setRadiusOpen(false);
-                }}
-              >
+                }}>
                 <label htmlFor="custom-radius-input">
                   Enter radius in miles (up to 50)
                 </label>

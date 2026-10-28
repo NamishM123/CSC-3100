@@ -3,10 +3,9 @@
 Mobile-first React app for the Price Pantry prototype. On a wide
 screen it sits in a centered phone-width column.
 
-Screens follow the Team ANNA storyboard: sign in (including the
-wrong-password branch), location or ZIP, home search, results,
-product detail, shopping list, cheapest total, nearby stores,
-and store detail.
+Screens follow the Team ANNA storyboard: Supabase sign-in and
+signup, location or ZIP, home search, results, product detail,
+shopping list, cheapest total, nearby stores, and store detail.
 
 ## Scripts
 
@@ -20,5 +19,5 @@ npm run lint
 ```
 
 The root `npm run dev` and `npm run build` scripts call this
-package. See the repository README for the demo sign-in,
-Supabase env vars, and Vercel settings.
+package. See the repository README for Supabase Auth setup,
+Google provider configuration, env vars, and Vercel settings.

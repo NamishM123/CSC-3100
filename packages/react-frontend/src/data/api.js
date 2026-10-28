@@ -19,6 +19,13 @@
 // product_swaps (optional): id, product_id, store_id, name,
 //   size_label, price
 
+import {
+  getSupabaseClient,
+  supabaseConfigured
+} from "../lib/supabase.js";
+
+export { supabaseConfigured } from "../lib/supabase.js";
+
 function asArray(value) {
   if (Array.isArray(value)) return value;
   if (value == null || value === "") return [];
@@ -144,22 +151,11 @@ async function readTable(supabase, table) {
   return data;
 }
 
-export function supabaseConfigured() {
-  return Boolean(
-    import.meta.env.VITE_SUPABASE_URL &&
-    import.meta.env.VITE_SUPABASE_ANON_KEY
-  );
-}
-
 export async function loadRemoteCatalog() {
-  const url = import.meta.env.VITE_SUPABASE_URL;
-  const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
-  if (!url || !key) return null;
+  if (!supabaseConfigured()) return null;
 
   try {
-    const { createClient } =
-      await import("@supabase/supabase-js");
-    const supabase = createClient(url, key);
+    const supabase = getSupabaseClient();
     const [
       storeChains,
       stores,
@@ -191,7 +187,8 @@ export async function loadRemoteCatalog() {
       shopping_lists: shoppingLists?.map(normalizeList) ?? null,
       shopping_list_items:
         shoppingListItems?.map(normalizeItem) ?? null,
-      price_history: priceHistory?.map(normalizeHistory) ?? null,
+      price_history:
+        priceHistory?.map(normalizeHistory) ?? null,
       product_swaps: productSwaps?.map(normalizeSwap) ?? null
     };
   } catch (error) {

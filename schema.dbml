@@ -1,0 +1,76 @@
+// Price Pantry: proposed high-level model for live grocery price lookups.
+// This design document replaces the original ERD; it is not a SQL migration.
+
+Project price_pantry_live {
+  database_type: 'PostgreSQL'
+  Note: '''
+    Users search for an item near a location. Each search can trigger fetch
+    jobs at supported stores, returning prices for products discovered on demand.
+    Reuse unexpired results before scheduling another fetch. Expiration and
+    cleanup must be implemented by the application or background workers;
+    expires_at alone does not remove data. Retain fetch jobs while cached
+    results reference them so each result retains its store and source context.
+  '''
+}
+
+Table public.users {
+  id text [pk]
+  name text
+}
+
+Table public.search_requests {
+  id text [pk]
+  user_id text [not null]
+  query text [not null]
+  zip text [not null]
+  radius_mi numeric [not null]
+  requested_at timestamptz [not null]
+}
+
+Table public.stores {
+  id text [pk]
+  retailer text [not null]
+  name text [not null]
+  address text
+  latitude numeric
+  longitude numeric
+}
+
+Table public.fetch_jobs {
+  id text [pk]
+  search_request_id text [not null]
+  store_id text [not null]
+  status text [not null, default: 'pending', note: 'pending, running, completed, or failed']
+  started_at timestamptz
+  completed_at timestamptz
+  error_message text
+}
+
+Table public.products {
+  id text [pk]
+  name text [not null]
+  size_label text
+
+  Note: 'Products are recorded as they are discovered through live lookups.'
+}
+
+Table public.price_results {
+  id text [pk]
+  fetch_job_id text [not null]
+  product_id text [not null]
+  price numeric [not null]
+  currency text [not null]
+  unit_caption text
+  in_stock boolean [note: 'Null means availability is unknown.']
+  source_url text [not null]
+  fetched_at timestamptz [not null]
+  expires_at timestamptz [not null]
+
+  Note: 'Temporary cached observations. The store is identified through fetch_job_id.'
+}
+
+Ref: public.search_requests.user_id > public.users.id
+Ref: public.fetch_jobs.search_request_id > public.search_requests.id
+Ref: public.fetch_jobs.store_id > public.stores.id
+Ref: public.price_results.fetch_job_id > public.fetch_jobs.id
+Ref: public.price_results.product_id > public.products.id
