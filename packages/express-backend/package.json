@@ -7,9 +7,13 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
+    "ingest": "node src/ingest/cli.js",
+    "ingest:dry": "node src/ingest/cli.js --dry-run",
+    "test": "node --test src/ingest/*.test.js",
     "lint": "eslint ."
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.118.0",
     "express": "^5.2.1"
   },
   "devDependencies": {

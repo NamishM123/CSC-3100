@@ -82,6 +82,40 @@ users' shopping lists.
 An empty Supabase table does not wipe the demo. A table replaces
 mock data after it has at least one row.
 
+### Live price ingestion (Kroger API)
+
+`packages/express-backend` fills the `prices`, `products`, `stores`,
+and `store_chains` tables with real, per-store prices from the
+[Kroger public API](https://developer.kroger.com). The frontend reads
+those rows through Supabase, so `compare.js` ranks stores on live data
+with no UI change.
+
+Prices arrive as structured JSON from Kroger's API rather than from
+parsing store webpages: it is ToS-compliant, does not get bot-blocked,
+and does not break when a site's markup changes. It covers
+Kroger-family stores only; chains with no public prices (for example
+Trader Joe's) cannot be sourced this way.
+
+To run it:
+
+1. Create a free app at <https://developer.kroger.com> and copy its
+   client id and secret.
+2. Copy `packages/express-backend/.env.example` to
+   `packages/express-backend/.env` and fill in `KROGER_CLIENT_ID`,
+   `KROGER_CLIENT_SECRET`, `SUPABASE_URL`, and
+   `SUPABASE_SERVICE_ROLE_KEY` (the service role key writes rows and
+   must stay server-side — never in the Vite frontend).
+3. Preview without writing: `npm run ingest:dry -w express-backend`
+   fetches and normalizes, then prints the cheapest sample.
+4. Write to Supabase: `npm run ingest -w express-backend`, or with the
+   server running, `POST /ingest` (add `?dryRun=1` to preview).
+   `GET /ingest/status` reports the last run.
+
+Set `INGEST_ZIP` and `INGEST_TERMS` in `.env` to control which stores
+and items are fetched. Re-running upserts on deterministic ids, so
+prices refresh in place instead of duplicating. Schedule
+`npm run ingest` (for example with cron) to keep prices current.
+
 ### Deploy on Vercel
 
 Import this GitHub repository in the Vercel dashboard. Use these
