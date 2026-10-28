@@ -113,8 +113,32 @@ To run it:
 
 Set `INGEST_ZIP` and `INGEST_TERMS` in `.env` to control which stores
 and items are fetched. Re-running upserts on deterministic ids, so
-prices refresh in place instead of duplicating. Schedule
-`npm run ingest` (for example with cron) to keep prices current.
+prices refresh in place instead of duplicating.
+
+#### Run ingestion on Vercel (no local machine)
+
+`api/ingest.mjs` is a Vercel serverless function that runs the same
+pipeline, and `vercel.json` has a daily cron that calls it, so prices
+refresh in the cloud on their own. To set it up:
+
+1. In the Vercel dashboard, open **Project → Settings → Environment
+   Variables** and add (for the Production environment):
+   - `KROGER_CLIENT_ID`, `KROGER_CLIENT_SECRET`
+   - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+   - `CRON_SECRET` — any long random string. Vercel sends it as a
+     Bearer token on cron runs; the function rejects calls without it.
+   - optionally `INGEST_ZIP`, `INGEST_TERMS`, etc.
+2. Redeploy. The cron in `vercel.json` (`0 9 * * *`, daily at 09:00
+   UTC) now runs ingestion automatically.
+
+These are server-side variables: do not prefix them with `VITE_`, so
+they are never bundled into the browser. The frontend still uses only
+`VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
+
+To trigger a run by hand, `POST`/`GET` `/api/ingest` with the header
+`Authorization: Bearer <CRON_SECRET>` (add `?dryRun=1` to preview
+without writing). Schedule `npm run ingest` with your own cron instead
+if you are not deploying the function.
 
 ### Deploy on Vercel
 

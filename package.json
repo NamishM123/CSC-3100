@@ -10,6 +10,9 @@
     "build": "npm run build -w react-frontend",
     "lint": "npm run lint -w react-frontend && npm run lint -w express-backend"
   },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.118.0"
+  },
   "devDependencies": {
     "prettier": "^3.9.6"
   }
