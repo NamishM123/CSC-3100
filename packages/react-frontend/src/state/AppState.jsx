@@ -22,6 +22,7 @@ function clone(value) {
 
 function mockCatalog() {
   return {
+    storesAreDemo: true,
     store_chains: clone(store_chains),
     stores: clone(stores),
     products: clone(products),
@@ -80,7 +81,10 @@ function applyRemote(current, remote) {
   if (remote.store_chains?.length) {
     catalog.store_chains = remote.store_chains;
   }
-  if (remote.stores?.length) catalog.stores = remote.stores;
+  if (remote.stores?.length) {
+    catalog.stores = remote.stores;
+    catalog.storesAreDemo = false;
+  }
   if (remote.products?.length)
     catalog.products = remote.products;
   if (remote.prices?.length) catalog.prices = remote.prices;

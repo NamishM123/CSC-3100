@@ -74,6 +74,28 @@ Catalog and shopping-list data still use the prototype data
 layer; Supabase Auth integration does not migrate that data to
 the lookup model.
 
+### Store map and location
+
+The Stores screen uses Leaflet with OpenStreetMap street tiles.
+Drag or use the directional buttons/arrow keys to pan; use the
+zoom buttons, mouse wheel, or pinch gesture to zoom. The center
+button returns to the selected location, and Show stores fits
+the nearby markers. No map API key is required.
+
+Allow location saves the browser's actual GPS coordinates. ZIP
+entry uses [Zippopotam.us](https://www.zippopotam.us/) to
+resolve a US ZIP code to an approximate area center. Failed
+lookups and denied GPS requests do not substitute a demo
+location.
+
+The store map and list filter the available catalog by the
+selected radius and calculate straight-line distances from the
+selected location. Built-in store pins remain sample data in San
+Luis Obispo; the real basemap does not provide live retailer
+discovery. OpenStreetMap attribution remains visible. Tiles
+require an internet connection and follow the
+[OpenStreetMap tile usage policy](https://operations.osmfoundation.org/policies/tiles/).
+
 ### Mock data and Supabase
 
 `packages/react-frontend/src/data/mock.js` holds the demo rows.
