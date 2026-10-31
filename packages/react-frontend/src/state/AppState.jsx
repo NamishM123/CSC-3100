@@ -3,6 +3,11 @@ import { loadRemoteCatalog } from "../data/api.js";
 import { AppStateContext } from "./useAppState.js";
 import { useAuthSession } from "./useAuthSession.js";
 import {
+  loadAccountState,
+  saveAccountState,
+  clearAccountState
+} from "../lib/accountStorage.js";
+import {
   price_history,
   prices,
   product_swaps,
@@ -13,8 +18,6 @@ import {
   store_chains,
   stores
 } from "../data/mock.js";
-
-const STORAGE_KEY = "price-pantry-demo";
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -59,13 +62,10 @@ function freshState() {
   };
 }
 
-function loadInitial() {
+function loadInitial(userId) {
   const base = freshState();
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEY);
-    if (!raw) return base;
-    const saved = JSON.parse(raw);
-    delete saved.user;
+    const saved = loadAccountState(sessionStorage, userId);
     return {
       ...base,
       ...saved,
@@ -109,42 +109,53 @@ function applyRemote(current, remote) {
   return next;
 }
 
-function persistable(state) {
-  const copy = { ...state };
-  delete copy.catalog;
-  delete copy.user;
-  return copy;
+export function AppStateProvider({ children }) {
+  const auth = useAuthSession();
+  return (
+    <AccountStateProvider
+      key={auth.user?.id || "signed-out"}
+      auth={auth}>
+      {children}
+    </AccountStateProvider>
+  );
 }
 
-export function AppStateProvider({ children }) {
-  const [state, setState] = useState(loadInitial);
-  const auth = useAuthSession();
+function AccountStateProvider({ auth, children }) {
+  const userId = auth.user?.id;
+  const [state, setState] = useState(() => loadInitial(userId));
 
   useEffect(() => {
     try {
-      sessionStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify(persistable(state))
-      );
+      saveAccountState(sessionStorage, userId, state);
     } catch {
       // Private mode or a full disk should not break the demo.
     }
-  }, [state]);
+  }, [state, userId]);
 
   useEffect(() => {
     let cancelled = false;
-    loadRemoteCatalog().then((remote) => {
-      if (cancelled || !remote) return;
-      setState((current) => applyRemote(current, remote));
-    });
+    loadRemoteCatalog({ includeLists: Boolean(userId) }).then(
+      (remote) => {
+        if (cancelled || !remote) return;
+        setState((current) => applyRemote(current, remote));
+      }
+    );
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [userId]);
 
   const api = {
     ...state,
     ...auth,
+    async signOut() {
+      await auth.signOut();
+      clearAccountState(sessionStorage, userId);
+    },
+    async signOutEverywhere() {
+      await auth.signOutEverywhere();
+      clearAccountState(sessionStorage, userId);
+    },
     setLocation(location) {
       setState((current) => ({ ...current, location }));
     },
@@ -196,7 +207,7 @@ export function AppStateProvider({ children }) {
           {
             id,
             name: clean,
-            owner_name: current.user?.name || "You",
+            owner_name: auth.user?.name || "You",
             shared_with: []
           }
         ]

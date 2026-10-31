@@ -1,27 +1,42 @@
 import { createClient } from "@supabase/supabase-js";
+import { validateAuthConfig } from "./authConfig.js";
 
-const env = import.meta.env || {};
-const url = env.VITE_SUPABASE_URL;
+const url = import.meta.env.VITE_SUPABASE_URL;
 const key =
-  env.VITE_SUPABASE_PUBLISHABLE_KEY ||
-  env.VITE_SUPABASE_ANON_KEY;
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+  import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 let client;
+let configuration;
+try {
+  configuration = validateAuthConfig(url, key, {
+    allowLocalHttp: import.meta.env.DEV
+  });
+} catch {
+  // Build-time validation gives developers the actionable error without keys.
+  configuration = null;
+}
 
 export function supabaseConfigured() {
-  return Boolean(url && key);
+  return Boolean(configuration);
 }
 
 export function getSupabaseClient() {
   if (!supabaseConfigured()) return null;
-  client ??= createClient(url, key, {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
-      flowType: "pkce"
+  if (typeof window !== "undefined" && !window.isSecureContext)
+    return null;
+  client ??= createClient(
+    configuration.url,
+    configuration.key,
+    {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        flowType: "pkce"
+      }
     }
-  });
+  );
   return client;
 }
 

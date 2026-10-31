@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Screen from "../components/Screen.jsx";
 import Sheet from "../components/Sheet.jsx";
+import MfaSettings from "../components/MfaSettings.jsx";
 import { DIETARY_FILTERS } from "../data/mock.js";
 import { money } from "../lib/format.js";
 import { useAppState } from "../state/useAppState.js";
@@ -21,6 +22,20 @@ export default function Profile() {
     .slice(0, 1)
     .toUpperCase();
 
+  async function logOut(everywhere = false) {
+    setSignOutError("");
+    setSigningOut(true);
+    try {
+      if (everywhere) await state.signOutEverywhere();
+      else await state.signOut();
+      navigate("/sign-in", { replace: true });
+    } catch (error) {
+      setSignOutError(authErrorMessage(error));
+    } finally {
+      setSigningOut(false);
+    }
+  }
+
   return (
     <Screen
       title="Profile"
@@ -33,6 +48,8 @@ export default function Profile() {
           <p className="muted">{state.user?.email}</p>
         </div>
       </div>
+
+      <MfaSettings />
 
       <section className="profile-block">
         <h2>Location</h2>
@@ -184,19 +201,15 @@ export default function Profile() {
           type="button"
           className="btn primary"
           disabled={signingOut}
-          onClick={async () => {
-            setSignOutError("");
-            setSigningOut(true);
-            try {
-              await state.signOut();
-              navigate("/sign-in", { replace: true });
-            } catch (error) {
-              setSignOutError(authErrorMessage(error));
-            } finally {
-              setSigningOut(false);
-            }
-          }}>
+          onClick={() => logOut()}>
           {signingOut ? "Signing out..." : "Sign out"}
+        </button>
+        <button
+          type="button"
+          className="btn ghost"
+          disabled={signingOut}
+          onClick={() => logOut(true)}>
+          Sign out all devices
         </button>
       </div>
 
