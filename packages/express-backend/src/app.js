@@ -1,7 +1,7 @@
 import express from "express";
 import { requireAuth } from "./auth.js";
 
-export function createApp({ auth } = {}) {
+export function createApp({ auth, notifications } = {}) {
   const app = express();
   app.disable("x-powered-by");
   app.use((_req, res, next) => {
@@ -25,6 +25,12 @@ export function createApp({ auth } = {}) {
   app.get("/api/session", requireAuth(auth), (req, res) =>
     res.json({ user: req.user })
   );
+  if (notifications)
+    app.all(
+      "/api/notifications",
+      requireAuth(auth),
+      notifications.handler
+    );
   app.use((_req, res) =>
     res.status(404).json({ error: "Not found." })
   );

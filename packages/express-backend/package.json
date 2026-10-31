@@ -7,11 +7,17 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --env-file-if-exists=.env.local --watch src/index.js",
-    "test": "node --test src/*.test.js",
+    "test": "node --test src/*.test.js src/notifications/*.test.js",
+    "notifications:setup": "node --env-file-if-exists=.env.local scripts/notifications.js setup",
+    "notifications:check": "node --env-file-if-exists=.env.local scripts/notifications.js check",
     "lint": "eslint ."
   },
   "dependencies": {
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "web-push": "^3.6.7"
+  },
+  "engines": {
+    "node": ">=22.13.0"
   },
   "devDependencies": {
     "@eslint/compat": "^2.1.1",

@@ -10,7 +10,6 @@ const FIELDS = [
   "includeMember",
   "suggestSwaps",
   "acceptedSwapIds",
-  "saleNotifications",
   "dietary",
   "alerts",
   "routePlan",

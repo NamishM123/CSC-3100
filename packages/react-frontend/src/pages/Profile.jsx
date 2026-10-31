@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Screen from "../components/Screen.jsx";
 import Sheet from "../components/Sheet.jsx";
 import MfaSettings from "../components/MfaSettings.jsx";
+import NotificationSettings from "../components/NotificationSettings.jsx";
 import { DIETARY_FILTERS } from "../data/mock.js";
 import { money } from "../lib/format.js";
 import { useAppState } from "../state/useAppState.js";
@@ -100,27 +101,7 @@ export default function Profile() {
         </button>
       </section>
 
-      <section className="profile-block row">
-        <div>
-          <h2>Sale notifications</h2>
-          <p className="muted">
-            Saved on this device for list items. Not sent yet.
-          </p>
-        </div>
-        <button
-          type="button"
-          className={
-            state.saleNotifications ? "switch on" : "switch"
-          }
-          role="switch"
-          aria-checked={state.saleNotifications}
-          aria-label="Sale notifications"
-          onClick={() =>
-            state.setSaleNotifications(!state.saleNotifications)
-          }>
-          <span />
-        </button>
-      </section>
+      <NotificationSettings />
 
       <section className="profile-block">
         <h2>Dietary filters</h2>
@@ -151,6 +132,14 @@ export default function Profile() {
               <li key={alert.product_id}>
                 {alert.name} below {money(alert.below)} near{" "}
                 {alert.zip}
+                <button
+                  type="button"
+                  className="text-link"
+                  onClick={() =>
+                    state.removeAlert(alert.product_id)
+                  }>
+                  Remove
+                </button>
               </li>
             ))}
           </ul>

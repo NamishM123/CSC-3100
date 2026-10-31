@@ -21,5 +21,8 @@ export default defineConfig(({ command, mode }) => {
       validateAuthConfig(url, configuredKey, options);
     }
   }
-  return { plugins: [react()] };
+  return {
+    plugins: [react()],
+    server: { proxy: { "/api": "http://127.0.0.1:8000" } }
+  };
 });
