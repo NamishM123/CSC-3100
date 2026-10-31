@@ -4,7 +4,8 @@ import {
   appUser,
   authCallbackError,
   authErrorMessage,
-  authRedirectUrl
+  authRedirectUrl,
+  passwordValidationError
 } from "./auth.js";
 import { safeDest } from "./format.js";
 
@@ -31,6 +32,27 @@ test("auth redirects retain internal destinations and reject external URLs", () 
       "https://pantry.example/sign-in"
     );
   }
+});
+
+test("signup accepts long passphrases while respecting bcrypt's byte limit", () => {
+  assert.match(
+    passwordValidationError("short password"),
+    /at least 15/
+  );
+  assert.equal(
+    passwordValidationError("a long unique passphrase"),
+    ""
+  );
+  assert.equal(passwordValidationError("x".repeat(72)), "");
+  assert.match(
+    passwordValidationError("x".repeat(73)),
+    /72 UTF-8 bytes/
+  );
+  assert.equal(passwordValidationError("é".repeat(36)), "");
+  assert.match(
+    passwordValidationError("é".repeat(37)),
+    /72 UTF-8 bytes/
+  );
 });
 
 test("authenticated profiles use Supabase identity and provider metadata", () => {

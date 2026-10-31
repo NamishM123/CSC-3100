@@ -4,13 +4,18 @@ import Screen from "../components/Screen.jsx";
 import AuthLoading from "../components/AuthLoading.jsx";
 import { useAppState } from "../state/useAppState.js";
 import { safeDest } from "../lib/format.js";
-import { authErrorMessage } from "../lib/auth.js";
+import {
+  authErrorMessage,
+  MIN_PASSWORD_LENGTH,
+  passwordValidationError
+} from "../lib/auth.js";
 
 export default function SignUp() {
   const {
     user,
     location,
     authLoading,
+    hasSession,
     signUp,
     signInWithGoogle
   } = useAppState();
@@ -24,6 +29,14 @@ export default function SignUp() {
   const [pending, setPending] = useState("");
 
   if (authLoading) return <AuthLoading />;
+  if (hasSession && !user)
+    return (
+      <Navigate
+        to="/sign-in"
+        replace
+        state={{ from: destination }}
+      />
+    );
   if (user) {
     return (
       <Navigate
@@ -46,8 +59,9 @@ export default function SignUp() {
       setError("Enter an email address.");
       return;
     }
-    if (password.length < 6) {
-      setError("Use at least 6 characters.");
+    const passwordError = passwordValidationError(password);
+    if (passwordError) {
+      setError(passwordError);
       return;
     }
     setPending("password");
@@ -65,6 +79,7 @@ export default function SignUp() {
     } catch (error) {
       setError(authErrorMessage(error));
     } finally {
+      setPassword("");
       setPending("");
     }
   }
@@ -136,8 +151,9 @@ export default function SignUp() {
                   name="password"
                   autoComplete="new-password"
                   required
-                  minLength={6}
-                  placeholder="At least 6 characters"
+                  minLength={MIN_PASSWORD_LENGTH}
+                  maxLength={72}
+                  placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
                   disabled={Boolean(pending)}
                   value={password}
                   onChange={(event) => {

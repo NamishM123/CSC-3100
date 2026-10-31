@@ -39,6 +39,7 @@ Other scripts:
 ```bash
 npm run build
 npm run lint
+npm test
 npm run dev -w express-backend
 ```
 
@@ -73,6 +74,285 @@ and
 Catalog and shopping-list data still use the prototype data
 layer; Supabase Auth integration does not migrate that data to
 the lookup model.
+
+### Activate two-factor authentication and security
+
+The application supports optional authenticator-app (TOTP) 2FA.
+Once an account enables it, both password and Google sign-in
+must pass the authenticator step before the app exposes that
+account's data. No SMS subscription or additional 2FA service is
+needed. The code in this repository does not change your hosted
+Supabase settings automatically.
+
+#### 1. Configure the correct Supabase project
+
+1. Open the Supabase project used by this application's existing
+   email/password accounts. Do not create a second project just
+   for 2FA.
+2. In **Authentication → Multi-Factor Authentication**, enable
+   both **TOTP enrollment** and **TOTP verification**. Keep both
+   enabled after rollout; disabling verification locks enrolled
+   users out. The dashboard labels can change; look for the
+   authenticator/TOTP enrollment and verification switches. See
+   [Supabase MFA setup](https://supabase.com/docs/guides/auth/auth-mfa).
+3. In **Authentication → Sign In / Providers → Email**, keep
+   email/password login and email confirmation enabled. Set the
+   minimum password length to **15**, matching this app's signup
+   rule. Enable leaked-password protection if your plan offers
+   it. Password policy must be configured in Supabase as well:
+   browser validation can be bypassed. Existing passwords can
+   still be used to sign in; this app does not force a password
+   reset.
+4. Under **Authentication → URL Configuration**, set the Site
+   URL to your HTTPS production origin. Add the exact production
+   callback `https://YOUR-SITE/sign-in` and development callback
+   `http://localhost:5173/sign-in`. Allow preview callbacks only
+   for previews you control. Avoid a broad wildcard covering
+   other people's sites.
+5. If using Google, keep its provider enabled and configure its
+   client ID/secret in Supabase, with the Supabase OAuth
+   callback registered in Google Cloud as described above.
+   Google login returns to the same app-level 2FA screen.
+6. Review **Authentication → Rate Limits** for password/token,
+   signup/email, and verification requests. Keep Supabase's
+   abuse limits enabled. These checks run at the Auth service; a
+   disabled button in the browser is not a rate limiter. See
+   [Supabase rate limits](https://supabase.com/docs/guides/auth/rate-limits).
+
+#### 2. Set public frontend credentials
+
+Copy `packages/react-frontend/.env.example` to
+`packages/react-frontend/.env.local` and replace its values:
+
+```dotenv
+VITE_SUPABASE_URL=https://YOUR-PROJECT.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_YOUR_PUBLIC_KEY
+```
+
+A legacy anon JWT can instead be supplied as
+`VITE_SUPABASE_ANON_KEY`. Use the same public credentials in
+your deployment environment, then rebuild/redeploy: Vite embeds
+them at build time. Restart Vite after local changes. The build
+rejects secret/service-role keys in either supported key
+variable and rejects insecure remote HTTP Auth URLs. Local
+Supabase HTTP on localhost is allowed during development. Serve
+the deployed app over HTTPS; login is unavailable in an insecure
+browser context.
+
+Every `VITE_` value is public frontend configuration. Never put
+service-role keys, database credentials, OAuth secrets,
+passwords, password hashes, or TOTP setup secrets there. If a
+private key has already been deployed or committed, rotate it in
+Supabase and replace/rebuild affected deployments; removing it
+from the current file does not revoke an exposed key.
+
+#### 3. Apply the database enforcement migration
+
+1. Back up your database or test on a development project first.
+2. Open **SQL Editor → New query** in the same Supabase project.
+3. Paste and run the entire contents of
+   [202610290002_mfa_access.sql](./supabase/migrations/202610290002_mfa_access.sql).
+   If using Supabase CLI migrations, apply this migration
+   through your normal migration workflow instead.
+4. This migration is independent of the catalog and push
+   features. It works with the current lookup schema, an older
+   prototype schema, or an Auth-only project. Missing
+   application tables are skipped. It can be run again safely,
+   including after adding a protected table listed in the
+   migration.
+5. Confirm installation in SQL Editor:
+
+   ```sql
+   select to_regprocedure('public.mfa_access_allowed()');
+
+   select tablename, policyname, permissive, roles
+   from pg_policies
+   where schemaname = 'public'
+     and policyname in (
+       'Require enrolled MFA',
+       'Require list ownership implementation'
+     )
+   order by tablename, policyname;
+   ```
+
+   The function must exist. Existing protected tables must show
+   `Require enrolled MFA` as **RESTRICTIVE**. This restriction
+   blocks anonymous callers and password-only sessions when the
+   account has a verified factor; an unfinished setup does not
+   lock the user out. It grants no new data access. Stores,
+   products, and public price catalog reads remain available.
+
+The prototype `shopping_lists` and `shopping_list_items` tables
+lack enforceable ownership. The migration closes both tables to
+browser clients even after 2FA. The app continues using
+sample/local lists scoped to the signed-in account; existing
+database rows are preserved. Before enabling real database list
+sync, implement owner/member IDs tied to `auth.users`, test
+owner/member RLS, and deliberately replace the
+`Require list ownership implementation` deny policy. A person's
+display name or a `shared_with` label is not proof of ownership.
+
+The live-lookup users/searches/jobs/results tables stay closed
+unless a separate permission policy grants access. Service-role
+workers bypass RLS; every user-facing worker/API must validate
+the caller, require enrolled MFA, and check row ownership.
+
+#### 4. Deploy and enable 2FA for an account
+
+1. Run `npm test`, `npm run lint`, and `npm run build`.
+2. Deploy the frontend with this repository's `vercel.json` (or
+   the frontend folder's config if deploying that folder). Both
+   contain the security response headers. The current Vercel
+   deployment is a static frontend; it does not deploy the
+   Express server automatically.
+3. Sign in, choose a location if prompted, then open **Profile →
+   Two-factor authentication → Set up two-factor
+   authentication**.
+4. Scan the QR code in an authenticator app. If scanning is not
+   possible, expand **Can't scan the code?** and enter its setup
+   key in the authenticator. Treat the QR/setup key like a
+   password: anyone with it can generate the same codes.
+5. Securely back up your authenticator, enter its current
+   six-digit code, and select **Enable two-factor
+   authentication**. The setting reports **On** only after
+   successful verification. The app keeps setup secrets in
+   memory only while setting up; it does not persist them in app
+   storage or logs.
+6. Optionally choose **Add another authenticator** for a
+   separate backup device. Cancel removes the unfinished factor.
+   Reloaded or abandoned unfinished factors are cleaned up the
+   next time setup starts; verified authenticators are
+   preserved.
+7. Sign out and sign back in. Enter the authenticator code to
+   finish signing in. A reload or direct URL to a protected app
+   page must still require verification. Returning from the
+   authenticator app must preserve an unfinished QR setup.
+8. To remove an authenticator, choose **Remove** and confirm its
+   current code. Removing the last authenticator disables 2FA.
+
+The login code screen includes a help QR above the code field,
+plus an **Open authenticator help** link for users on the same
+phone. Both open Google's public authenticator guide. Scan this
+help QR with the phone's camera. It contains only the public
+guide URL; the account's private setup QR is shown only during
+enrollment. Login codes still come from the authenticator that
+was already enrolled for the account.
+
+#### 5. Verify API and database enforcement
+
+For the optional local Express server, copy
+`packages/express-backend/.env.example` to `.env.local` in that
+same folder. Fill `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`
+(or `SUPABASE_ANON_KEY`) using the same project. Run
+`npm run dev -w express-backend`.
+
+`GET http://localhost:8000/health` stays public.
+`GET http://localhost:8000/api/session` requires
+`Authorization: Bearer YOUR_ACCESS_TOKEN`. It validates that
+exact token with Supabase Auth before interpreting its MFA
+claim. Missing/expired/forged tokens receive **401**;
+password-only tokens for enrolled accounts receive **403**;
+verified sessions receive **200**; unavailable Auth fails closed
+with **503**. Responses are not cached. The endpoint returns
+only the caller's ID, email, and assurance level. Do not paste
+real tokens into source files, screenshots, issue trackers, or
+logs. Future Express private routes should use `requireAuth()`
+from `src/auth.js` and add their own resource ownership checks.
+
+Before production rollout, use a test account and verify:
+
+| Check                                          | Expected result                                  |
+| ---------------------------------------------- | ------------------------------------------------ |
+| Password sign-in without enrolled 2FA          | Normal access                                    |
+| Incorrect/expired setup or login code          | Rejected; app stays locked during login          |
+| Password sign-in with enrolled 2FA             | Code required; correct code restores destination |
+| Google sign-in with enrolled 2FA               | Same app-level code requirement                  |
+| Reload/direct protected URL before code        | Still locked                                     |
+| Auth/factor lookup unavailable                 | No protected app access; retry/sign-out shown    |
+| API called with enrolled user's `aal1` token   | HTTP 403                                         |
+| API called with verified `aal2` token          | HTTP 200                                         |
+| Public catalog as signed-out user              | Catalog remains readable                         |
+| Prototype list tables through browser Data API | No rows accessible, including after 2FA          |
+| Account A signs out, Account B signs in        | A's local lists/location/searches do not appear  |
+
+To check the policy helper itself, replace `TEST_USER_UUID` with
+the Auth ID of your enrolled test account and run this SQL. Do
+not use a user's email as the ID:
+
+```sql
+begin;
+select set_config('request.jwt.claims',
+  '{"sub":"TEST_USER_UUID","role":"authenticated","aal":"aal1"}', true);
+select public.mfa_access_allowed(); -- false with a verified factor
+select set_config('request.jwt.claims',
+  '{"sub":"TEST_USER_UUID","role":"authenticated","aal":"aal2"}', true);
+select public.mfa_access_allowed(); -- true (ownership policies still apply)
+rollback;
+```
+
+The SQL Editor normally runs as an administrator and bypasses
+table RLS, so helper results are not proof of table access
+control. Also test the Data API with the public key and a real
+test user's token. Never test enforcement with a service-role
+key.
+
+#### Password hashing, browser security, and recovery
+
+Manual email/password login uses Supabase Auth, which stores
+salted **bcrypt password hashes**, not plaintext passwords. This
+already protects existing accounts; there is no password column
+to add to `public.users`. Passwords travel directly to Supabase
+over HTTPS. The app does not store or log passwords, and clears
+password inputs after an authentication attempt. It does not
+create an extra client-side hash, which would become a reusable
+login credential. See
+[Supabase password storage](https://supabase.com/docs/guides/auth/password-security).
+
+New signup passwords require at least 15 characters and at most
+72 UTF-8 bytes to respect bcrypt's input limit. Multibyte
+characters may take more than one byte. The stricter signup rule
+does not reject existing shorter passwords at sign-in. See
+[bcrypt's byte limit](https://github.com/kelektiv/node.bcrypt.js#security-issues-and-concerns).
+
+Vercel responses enforce a Content Security Policy, HTTPS/HSTS,
+anti-framing, MIME sniffing prevention, a restrictive referrer
+policy, and disabled camera/microphone permissions. Inline
+styles remain allowed for React/Leaflet positioning; inline
+scripts and eval are blocked. The policy allows the standard
+Supabase project domains, ZIP lookup, and OpenStreetMap tiles.
+If using a custom Supabase domain, add its exact HTTPS/WSS
+origins to `connect-src` and its storage image origin to
+`img-src` in **both** Vercel configs before deploying. Add only
+required origins, then check the browser console for CSP
+violations. The development Vite server does not apply this
+production CSP.
+
+Supabase session tokens persist through its SDK storage. App
+list/location/search caches are separate per account and per
+tab, are not loaded until authentication including 2FA passes,
+and are cleared from the current tab on sign-out. Old unscoped
+demo caches are no longer read. Browser storage is not encrypted
+and this SPA does not claim HttpOnly-cookie protection; avoid
+shared browser profiles for sensitive data. **Sign out all
+devices** revokes refresh sessions. Previously issued access
+JWTs may remain valid until expiry; it is not instant revocation
+of every token. Review the project's token lifetime and session
+settings in
+[Supabase sessions](https://supabase.com/docs/guides/auth/sessions).
+
+This app does not issue recovery codes. If all authenticators
+are lost, a trusted project administrator must verify the
+person's identity independently, find their Auth user ID, list
+their MFA factors with the admin API, and delete only the
+confirmed lost factors. Use Supabase's server-side
+`auth.admin.mfa.listFactors({ userId })` and
+`auth.admin.mfa.deleteFactor({ userId, id })` from a trusted
+admin environment; never add a public reset endpoint or ship an
+admin key to the browser. Deleting a verified factor signs out
+active sessions. Then have the person sign in and enroll a new
+authenticator. See
+[admin factor removal](https://supabase.com/docs/reference/javascript/auth-admin-deletefactor).
+Password reset or Google login does not skip an existing factor.
 
 ### Store map and location
 

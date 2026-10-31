@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, Navigate, useLocation } from "react-router-dom";
 import Screen from "../components/Screen.jsx";
 import AuthLoading from "../components/AuthLoading.jsx";
+import MfaChallenge from "../components/MfaChallenge.jsx";
 import { useAppState } from "../state/useAppState.js";
 import { safeDest } from "../lib/format.js";
 import {
@@ -15,6 +16,10 @@ export default function SignIn() {
     location,
     authLoading,
     authError,
+    hasSession,
+    mfaRequired,
+    refreshAuth,
+    signOut,
     signIn,
     signInWithGoogle
   } = useAppState();
@@ -32,6 +37,36 @@ export default function SignIn() {
   const message = error || authError;
 
   if (authLoading) return <AuthLoading />;
+  if (mfaRequired) return <MfaChallenge />;
+  if (hasSession && !user)
+    return (
+      <Screen title="Sign-in check" chrome={false}>
+        <p className="error" role="alert">
+          {message ||
+            "Unable to check account security. Please try again."}
+        </p>
+        <button
+          className="btn primary"
+          type="button"
+          onClick={() =>
+            refreshAuth().catch((failure) =>
+              setError(authErrorMessage(failure))
+            )
+          }>
+          Try again
+        </button>
+        <button
+          className="btn ghost"
+          type="button"
+          onClick={() =>
+            signOut().catch((failure) =>
+              setError(authErrorMessage(failure))
+            )
+          }>
+          Sign out
+        </button>
+      </Screen>
+    );
   if (user) {
     if (!location) {
       return (
@@ -63,6 +98,7 @@ export default function SignIn() {
     } catch (error) {
       setError(authErrorMessage(error));
     } finally {
+      setPassword("");
       setPending("");
     }
   }

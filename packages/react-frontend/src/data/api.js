@@ -151,7 +151,9 @@ async function readTable(supabase, table) {
   return data;
 }
 
-export async function loadRemoteCatalog() {
+export async function loadRemoteCatalog({
+  includeLists = false
+} = {}) {
   if (!supabaseConfigured()) return null;
 
   try {
@@ -170,8 +172,12 @@ export async function loadRemoteCatalog() {
       readTable(supabase, "stores"),
       readTable(supabase, "products"),
       readTable(supabase, "prices"),
-      readTable(supabase, "shopping_lists"),
-      readTable(supabase, "shopping_list_items"),
+      includeLists
+        ? readTable(supabase, "shopping_lists")
+        : null,
+      includeLists
+        ? readTable(supabase, "shopping_list_items")
+        : null,
       readTable(supabase, "price_history"),
       readTable(supabase, "product_swaps")
     ]);
