@@ -7,6 +7,7 @@
   "scripts": {
     "format": "prettier --write './**/*.{js,jsx,ts,tsx,css,md,json}' --config ./.prettierrc",
     "dev": "npm run dev -w react-frontend",
+    "dev:local": "node scripts/dev-local.mjs",
     "build": "npm run build -w react-frontend",
     "test": "npm run test -w react-frontend && npm run test -w express-backend",
     "lint": "npm run lint -w react-frontend && npm run lint -w express-backend"

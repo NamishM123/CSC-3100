@@ -203,6 +203,27 @@ a {
   margin-inline: auto;
 }
 
+.notification-modes {
+  margin: 0;
+  padding: 12px;
+  border: 1px solid #e1e1e1;
+  border-radius: 10px;
+}
+
+.notification-modes legend {
+  padding-inline: 6px;
+  font-weight: 600;
+}
+
+.notification-modes label {
+  display: block;
+  padding-block: 8px;
+}
+
+.notification-modes input {
+  accent-color: #2e7d32;
+}
+
 .form {
   margin-top: 36px;
 }

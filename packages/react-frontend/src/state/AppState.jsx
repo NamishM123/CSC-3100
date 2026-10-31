@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { loadRemoteCatalog } from "../data/api.js";
-import { AppStateContext } from "./useAppState.js";
+import NotificationState from "./NotificationState.jsx";
 import { useAuthSession } from "./useAuthSession.js";
 import {
   loadAccountState,
@@ -26,6 +26,7 @@ function clone(value) {
 function mockCatalog() {
   return {
     storesAreDemo: true,
+    pricesAreDemo: true,
     store_chains: clone(store_chains),
     stores: clone(stores),
     products: clone(products),
@@ -46,7 +47,6 @@ function demoLists() {
     includeMember: true,
     suggestSwaps: false,
     acceptedSwapIds: [],
-    saleNotifications: false,
     dietary: [],
     alerts: [],
     routePlan: "split",
@@ -87,7 +87,10 @@ function applyRemote(current, remote) {
   }
   if (remote.products?.length)
     catalog.products = remote.products;
-  if (remote.prices?.length) catalog.prices = remote.prices;
+  if (remote.prices?.length) {
+    catalog.prices = remote.prices;
+    catalog.pricesAreDemo = false;
+  }
   if (remote.price_history?.length) {
     catalog.price_history = remote.price_history;
   }
@@ -123,6 +126,11 @@ export function AppStateProvider({ children }) {
 function AccountStateProvider({ auth, children }) {
   const userId = auth.user?.id;
   const [state, setState] = useState(() => loadInitial(userId));
+  const refreshCatalog = useCallback(async () => {
+    const remote = await loadRemoteCatalog();
+    if (remote)
+      setState((current) => applyRemote(current, remote));
+  }, []);
 
   useEffect(() => {
     try {
@@ -148,6 +156,7 @@ function AccountStateProvider({ auth, children }) {
   const api = {
     ...state,
     ...auth,
+    refreshCatalog,
     async signOut() {
       await auth.signOut();
       clearAccountState(sessionStorage, userId);
@@ -320,12 +329,6 @@ function AccountStateProvider({ auth, children }) {
         };
       });
     },
-    setSaleNotifications(saleNotifications) {
-      setState((current) => ({
-        ...current,
-        saleNotifications
-      }));
-    },
     toggleDietary(filter) {
       setState((current) => {
         const has = current.dietary.includes(filter);
@@ -350,6 +353,14 @@ function AccountStateProvider({ auth, children }) {
         return { ...current, alerts: [alert, ...rest] };
       });
     },
+    removeAlert(productId) {
+      setState((current) => ({
+        ...current,
+        alerts: current.alerts.filter(
+          (alert) => alert.product_id !== productId
+        )
+      }));
+    },
     setRoutePlan(routePlan) {
       setState((current) => ({ ...current, routePlan }));
     },
@@ -363,8 +374,8 @@ function AccountStateProvider({ auth, children }) {
   };
 
   return (
-    <AppStateContext.Provider value={api}>
+    <NotificationState appState={api}>
       {children}
-    </AppStateContext.Provider>
+    </NotificationState>
   );
 }

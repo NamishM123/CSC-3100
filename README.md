@@ -29,6 +29,11 @@ npm run dev
 
 Open http://localhost:5173
 
+For the app plus the local background notification server, use
+`npm run dev:local` instead. This starts both servers; leave
+that terminal open. Use Node.js 24 LTS (minimum 22.13 for the
+backend's built-in SQLite support).
+
 Create an account with your email and password, confirm the
 email if requested, then sign in. Authentication uses Supabase;
 there are no preset demo credentials. Then allow location, or
@@ -46,6 +51,150 @@ npm run dev -w express-backend
 `npm run build` builds the React app. `npm run lint` lints the
 frontend and the Express package. The Express server is local
 only. `GET /health` on port 8000 returns `{ "status": "ok" }`.
+The local server also serves the authenticated session and
+notification APIs; Vite proxies `/api` to it on port 8000.
+
+### Local sale and price notifications — no Vercel required
+
+Notifications support two delivery modes in **Profile → Sale
+notifications**. Both require browser permission and a signed-in
+account. An account with 2FA must finish verification first.
+
+**While the app is open** works with `npm run dev` alone. Choose
+that mode, turn notifications on, and allow permission. The tab
+checks your outstanding list items and saved price targets on
+enable, catalog/watch changes, focus, and every minute. Leaving
+the tab open is required; browsers can suspend background tabs.
+**Send test notification** checks display without waiting for a
+matching sale. **Check saved items now** runs a check
+immediately.
+
+**Background via local server** keeps checking after the tab
+closes. To use it:
+
+1. Keep your existing public Supabase frontend configuration in
+   `packages/react-frontend/.env.local`. During local
+   development, the backend automatically reads that file's
+   public project URL and publishable/anon key. No service-role
+   key or notification database migration is needed for this
+   local implementation.
+2. Run `npm install` once after updating the code, then run
+   `npm run dev:local` from the repository root. Open
+   **http://localhost:5173** consistently; `127.0.0.1` is a
+   different browser origin with separate
+   permissions/subscriptions.
+3. Sign in and choose your location. In Profile, turn
+   notifications off if already enabled, select **Background via
+   local server**, then turn them on and grant permission.
+4. Select **Send test notification**. This sends a real Web Push
+   request from Express through your browser's push provider.
+   Check the operating system's notification center; browser/OS
+   notification settings and Focus/Do Not Disturb still apply.
+5. Select **Check saved items now** to evaluate current watches,
+   then close the app tab. Leave the terminal, local backend,
+   network, and computer running. Express checks up to 100 saved
+   devices per pass, every 60 seconds by default. Alerts can be
+   delivered without an open app tab. A fully stopped browser or
+   sleeping computer can defer delivery. Keep Vite running too
+   so clicking an alert can open its product page.
+6. To run a one-off server check manually, use another terminal:
+
+   ```bash
+   npm run notifications:check -w express-backend
+   ```
+
+This command reads saved watches even with no open app page. It
+reports counts of processed devices, sent alerts, and failed
+devices. It does not require a cron service or Vercel. You can
+also run the two servers separately with `npm run dev` and
+`npm run dev -w express-backend`. Restart the backend after
+editing backend code when using the combined command.
+
+Background watches contain product IDs for unchecked,
+positive-quantity items in existing lists, price targets for the
+selected ZIP, selected coordinates, radius, membership
+preference, and whether the catalog is demo data. The app syncs
+them while open; changes made while the app/server cannot
+communicate reach the backend on the next successful sync. The
+server does not receive passwords or store access/refresh tokens
+with the watch.
+
+The backend generates its VAPID key pair automatically and
+stores keys, SQLite watches, claims, and delivery history in
+`packages/express-backend/.local/notifications/`. This directory
+is ignored by Git. Keep it private and preserve it across
+restarts; deleting it loses server subscriptions/history and
+rotates keys. If keys change, turn background notifications off
+and on again. `npm run notifications:setup -w express-backend`
+can create/check the keys in advance without printing them.
+
+Optional settings belong in
+`packages/express-backend/.env.local` (see `.env.example`).
+Explicit `SUPABASE_URL` and
+`SUPABASE_PUBLISHABLE_KEY`/`SUPABASE_ANON_KEY` override the
+local frontend fallback; keep them on the same project. Other
+settings are `PUSH_DATA_DIR`, `PUSH_CHECK_INTERVAL_SECONDS`
+(15–86400), `VAPID_SUBJECT` (a real contact URI before
+sharing/deployment), and an optional existing
+`VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY` pair. Supply both keys or
+neither. The default contact URI is a development placeholder.
+Keep the default backend `PORT=8000` unless also updating Vite's
+proxy. It binds to `127.0.0.1` by default; do not expose a
+development server publicly.
+
+Notification matching requires a confirmed in-stock, positive
+price within the selected radius. Member prices respect the
+membership setting. Prices seven days old or older, future
+observations, and expired/future/invalid sale periods are
+excluded. Date-only sale end dates include the entire UTC day.
+Price targets notify strictly below the saved amount. Matching
+sales and targets for the same offer produce one alert. Backend
+live catalog reads are bounded to 5,000 rows per table per
+check.
+
+The built-in sample catalog uses its fixed demo clock. Alerts
+from those rows say **Demo**. No live retailer feed has been
+added: real alerts require an updating prototype `prices`
+catalog containing sale/stock metadata. The newer
+`price_results` schema does not supply that metadata and is not
+treated as a sale feed. New real offers are detected when your
+existing data source updates the catalog.
+
+Recent delivered offers appear in Profile. Clearing history does
+not resend them. Browser mode deduplicates per account on this
+browser; background mode uses durable SQLite delivery records
+and atomic claims, including across process restarts. Transient
+failures retry; expired push endpoints are deleted. As with most
+push systems, a crash between sending and recording success can
+cause a retry; stable notification tags reduce duplicate
+displays. Newly matching alerts are limited to 20 per device per
+pass; later passes continue with unsent matches.
+
+Turning notifications off removes this device's background watch
+and unsubscribes it. Signing out also attempts that cleanup;
+local unsubscribe is attempted even if the backend is down, and
+an unavailable notification service does not prevent Auth
+sign-out. Global sign-out also requests deletion of all server
+watches for the account when the backend is reachable. If
+browser/provider cleanup fails while offline, block that site's
+notification permission to stop device delivery immediately.
+Other devices' already displayed notifications are not recalled.
+
+Notification permission and delivery are browser/platform
+features. Use a supported desktop browser on **localhost** or
+HTTPS. On iPhone/iPad, use an installed Home Screen app on an
+HTTPS origin; a phone's `localhost` refers to the phone, and a
+computer's plain HTTP LAN address is not a secure origin. A
+manifest is supplied, but the app does not cache pages for
+offline use. See
+[Web Push](https://developer.mozilla.org/en-US/docs/Web/API/Push_API)
+and
+[notification display](https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerRegistration/showNotification).
+
+For future hosting, use a persistent Node server or adapt the
+store/scheduler to a hosted database and job runner. SQLite in
+an ephemeral function filesystem is not a durable production
+store. Vercel is not involved in the local notification flow.
 
 ### Authentication
 

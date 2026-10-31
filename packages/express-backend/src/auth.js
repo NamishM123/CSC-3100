@@ -1,3 +1,5 @@
+import { publicAuthConfig } from "./config.js";
+
 function failure(status, message) {
   return Object.assign(new Error(message), { status });
 }
@@ -49,47 +51,23 @@ export async function verifiedSession(token, getUser) {
 }
 
 async function getSupabaseUser(token) {
-  const url = process.env.SUPABASE_URL;
-  const key =
-    process.env.SUPABASE_PUBLISHABLE_KEY ||
-    process.env.SUPABASE_ANON_KEY;
-  if (!url || !key)
-    throw failure(
-      503,
-      "Authentication is temporarily unavailable."
-    );
-  const base = new URL(url);
-  const local = ["localhost", "127.0.0.1", "[::1]"].includes(
-    base.hostname
-  );
-  if (
-    base.username ||
-    base.password ||
-    base.search ||
-    base.hash ||
-    (base.protocol !== "https:" &&
-      !(
-        process.env.NODE_ENV !== "production" &&
-        local &&
-        base.protocol === "http:"
-      ))
-  ) {
+  let config;
+  try {
+    config = publicAuthConfig();
+  } catch {
     throw failure(
       503,
       "Authentication is temporarily unavailable."
     );
   }
-  const response = await fetch(
-    `${base.href.replace(/\/$/, "")}/auth/v1/user`,
-    {
-      headers: {
-        apikey: key,
-        Authorization: `Bearer ${token}`
-      },
-      redirect: "error",
-      signal: AbortSignal.timeout(10000)
-    }
-  );
+  const response = await fetch(`${config.url}/auth/v1/user`, {
+    headers: {
+      apikey: config.key,
+      Authorization: `Bearer ${token}`
+    },
+    redirect: "error",
+    signal: AbortSignal.timeout(10000)
+  });
   if ([401, 403].includes(response.status)) return null;
   if (!response.ok)
     throw failure(
