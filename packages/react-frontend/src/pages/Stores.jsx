@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import Screen from "../components/Screen.jsx";
 import StoreCard from "../components/StoreCard.jsx";
@@ -120,17 +120,26 @@ export default function Stores() {
               stores={stores}
               radiusMi={radiusMi}
               sample={catalog.storesAreDemo}
+              selectedStoreId={selectedStoreId}
+              onSelectStore={setSelectedStoreId}
             />
           ) : null}
           <div className="stack cards-grid">
             {stores.map((store) => (
-              <StoreCard
-                key={store.id}
-                store={store}
-                variant="distance"
-                age={ageFor(store.id)}
-                to={`/stores/${store.id}`}
-              />
+              <div key={store.id} className={
+                selectedStoreId === store.id
+                  ? "store-result selected"
+                  : "store-result"
+              }
+                onClick={() => setSelectedStoreId(store.id)}>
+                <StoreCard
+                  key={store.id}
+                  store={store}
+                  variant="distance"
+                  age={ageFor(store.id)}
+                  to={`/stores/${store.id}`}
+                />
+              </div>
             ))}
             {stores.length === 0 ? (
               <div className="card empty">

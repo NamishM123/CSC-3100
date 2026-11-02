@@ -962,15 +962,19 @@ input[type="radio"] {
 .store-map-directions .north {
   grid-area: 1 / 2;
 }
+
 .store-map-directions .west {
   grid-area: 2 / 1;
 }
+
 .store-map-directions .center {
   grid-area: 2 / 2;
 }
+
 .store-map-directions .east {
   grid-area: 2 / 3;
 }
+
 .store-map-directions .south {
   grid-area: 3 / 2;
 }
@@ -1195,6 +1199,7 @@ input[type="radio"] {
 }
 
 @media (min-width: 1024px) {
+
   body,
   .stage {
     background: #f3f6f3;
@@ -1325,10 +1330,8 @@ input[type="radio"] {
 
   .auth {
     display: grid;
-    grid-template-columns: minmax(280px, 1fr) minmax(
-        380px,
-        460px
-      );
+    grid-template-columns: minmax(280px, 1fr) minmax(380px,
+        460px);
     gap: 64px;
     align-items: center;
     min-height: calc(100dvh - 120px);
@@ -1443,7 +1446,7 @@ input[type="radio"] {
 
   .compare-columns .best,
   .compare-columns .plan,
-  .compare-side > .card {
+  .compare-side>.card {
     margin-top: 0;
     margin-bottom: 0;
   }
@@ -1487,10 +1490,8 @@ input[type="radio"] {
 
   .stores-layout.map-mode {
     display: grid;
-    grid-template-columns: minmax(0, 1.35fr) minmax(
-        280px,
-        0.8fr
-      );
+    grid-template-columns: minmax(0, 1.35fr) minmax(280px,
+        0.8fr);
     gap: 20px;
     align-items: start;
   }
@@ -1772,6 +1773,7 @@ button:disabled {
 }
 
 @media (prefers-reduced-motion: reduce) {
+
   *,
   *::before,
   *::after {
@@ -1909,4 +1911,26 @@ button:disabled {
   height: 100%;
   object-fit: contain;
   padding: 8px;
+}
+
+.store-result {
+  border-radius: 12px;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.store-result.selected {
+  outline: 2px solid #2e7d32;
+  outline-offset: 2px;
+  background: #f1f8f2;
+}
+
+/* Selected map marker */
+.store-map-pin.selected {
+  background: #2e7d32;
+  border: 3px solid #ffffff;
+  border-radius: 50% 50% 50% 0;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.35);
+  transform: rotate(-45deg) scale(1.15);
 }

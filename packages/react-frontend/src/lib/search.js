@@ -206,14 +206,13 @@ export function dietaryStatus(product, filters) {
     conflicts: [],
     missing: []
   };
+}
 
-
-  export function productMatchesQuery(product, rawQuery) {
-    const query = normalize(rawQuery);
-    if (!query) return true;
-    const haystack = normalize(
-      `${product.name} ${product.category || ""} ${(product.keywords || []).join(" ")}`
-    );
-    return haystack.includes(query);
-  }
-
+export function productMatchesQuery(product, rawQuery) {
+  const query = normalize(rawQuery);
+  if (!query) return true;
+  const haystack = normalize(
+    `${product.name} ${product.category || ""} ${(product.keywords || []).join(" ")}`
+  );
+  return haystack.includes(query);
+}

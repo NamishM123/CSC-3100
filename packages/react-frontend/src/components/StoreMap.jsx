@@ -43,7 +43,9 @@ export default function StoreMap({
   place,
   stores,
   radiusMi,
-  sample = false
+  sample = false,
+  selectedStoreId,
+  onSelectStore
 }) {
   const container = useRef(null);
   const mapRef = useRef(null);
@@ -52,7 +54,9 @@ export default function StoreMap({
   const [tileStatus, setTileStatus] = useState("loading");
   const helpId = useId();
   const navigate = useNavigate();
-  const { latitude, longitude } = coordinatesOf(place);
+  const coordinates = coordinatesOf(place);
+  const latitude = coordinates?.latitude;
+  const longitude = coordinates?.longitude;
   const approximate = place.source === "zip";
   const locationLabel = approximate
     ? `ZIP ${place.zip} area (approximate)`
@@ -150,23 +154,32 @@ export default function StoreMap({
       if (!coordinates) continue;
       const label = document.createElement("span");
       label.textContent = store.name.slice(0, 2).toUpperCase();
+
+      const isSelected = store.id === selectedStoreId;
       const marker = L.marker(
         [coordinates.latitude, coordinates.longitude],
         {
           icon: L.divIcon({
             html: label,
-            className: "store-map-pin",
+            className: isSelected
+              ? "store-map-pin selected"
+              : "store-map-pin",
             iconSize: [36, 36],
             iconAnchor: [18, 36],
             popupAnchor: [0, -32]
           }),
           title: store.name,
           alt: store.name,
-          riseOnHover: true
+          riseOnHover: true,
+          zIndexOffset: isSelected ? 1000 : 0
         }
       )
         .bindPopup(storePopup(store, sample, navigate))
         .addTo(layer);
+
+      marker.on("click", () => {
+        onSelectStore?.(store.id);
+      })
       marker
         .getElement()
         ?.setAttribute("aria-label", store.name);
@@ -178,8 +191,31 @@ export default function StoreMap({
     locationLabel,
     stores,
     sample,
-    navigate
+    navigate,
+    selectedStoreId,
+    onSelectStore
   ]);
+
+  useEffect(() => {
+    if (!selectedStoreId || ~mapRef.current) return;
+    const selectedStore = stores.find(
+      (store) => store.id === selectedStoreId
+    );
+    if (!selectedStore) return;
+
+    const coordinates = coordinatesOf(selectedStore);
+    if (!coordinates) return;
+
+    const map = mapRef.current;
+
+    map.flyTo([coordinates.latitude, coordinates.longitude],
+      15,
+      {
+        animate: true,
+        duration: 0.8
+      }
+    );
+  }, [selectedStoreId, stores])
 
   function pan(x, y) {
     mapRef.current?.panBy([x, y], { animate: true });
@@ -206,7 +242,13 @@ export default function StoreMap({
       maxZoom: 14
     });
   }
-
+  if (latitude == null || longitude == null) {
+    return (
+      <section className="store-map-panel">
+        <p>Location coordinates unavailable.</p>
+      </section>
+    );
+  }
   return (
     <section className="store-map-panel" aria-label="Store map">
       <div className="store-map-toolbar">
