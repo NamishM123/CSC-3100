@@ -299,6 +299,17 @@ test("HTTP APIs enforce verified MFA, per-account ownership, tests, status, and 
     200
   );
   assert.equal(sends.length, 1);
+  const firstTestId = sends[0].notification.id;
+  assert.equal(
+    (
+      await call("POST", {
+        endpoint: subscription.endpoint,
+        action: "test"
+      })
+    ).status,
+    200
+  );
+  assert.notEqual(sends[1].notification.id, firstTestId);
   assert.equal(
     (
       await call("POST", {

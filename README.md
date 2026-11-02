@@ -170,6 +170,15 @@ cause a retry; stable notification tags reduce duplicate
 displays. Newly matching alerts are limited to 20 per device per
 pass; later passes continue with unsent matches.
 
+Every click on **Send test notification** has a fresh ID, so it
+can produce a new alert instead of silently replacing an older
+test in the notification center. If the app reports a test was
+submitted but no popup appears, check the notification center,
+the browser's notification permission for the exact current
+origin, and your operating system's notification/banner and Do
+Not Disturb settings. The browser/provider accepting a request
+does not confirm that the operating system displayed a banner.
+
 Turning notifications off removes this device's background watch
 and unsubscribes it. Signing out also attempts that cleanup;
 local unsubscribe is attempted even if the backend is down, and

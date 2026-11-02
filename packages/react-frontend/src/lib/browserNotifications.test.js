@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
 import vm from "node:vm";
+import { createTestNotification } from "./testNotification.js";
 import {
   notificationPermission,
   requestNotificationPermission
@@ -110,6 +111,35 @@ test("service worker displays push with no open app and posts updates to open ta
     state.messages[0].notification.accountId,
     "user"
   );
+});
+
+test("repeated push tests keep distinct tags while normal offer tags remain stable", async () => {
+  const state = await worker();
+  async function deliver(notification) {
+    let task;
+    state.handlers.get("push")({
+      data: { json: () => notification },
+      waitUntil(value) {
+        task = value;
+      }
+    });
+    await task;
+  }
+  await deliver(createTestNotification("server"));
+  await deliver(createTestNotification("server"));
+  assert.notEqual(
+    state.displayed[0].tag,
+    state.displayed[1].tag
+  );
+  const offer = {
+    id: "same-sale-offer",
+    title: "Sale",
+    body: "Bananas",
+    url: "/profile"
+  };
+  await deliver(offer);
+  await deliver(offer);
+  assert.equal(state.displayed[2].tag, state.displayed[3].tag);
 });
 
 test("notification clicks reuse a window and never open external destinations", async () => {
