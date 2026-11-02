@@ -81,35 +81,51 @@ function suggestionFor(products, query) {
   return best;
 }
 
-export function findProduct(products, rawQuery) {
-  const query = (rawQuery || "").trim();
-  if (!query) {
-    return {
-      query: "",
-      primary: null,
-      alsoTry: [],
-      suggestion: null
-    };
-  }
-  const ranked = products
+function rankProducts(products, query) {
+  return products
     .map((product) => ({
       product,
       score: scoreProduct(product, query)
     }))
-    .filter((entry) => entry.score > 0)
-    .sort(
-      (a, b) =>
-        b.score - a.score ||
-        a.product.name.localeCompare(b.product.name)
-    );
-  if (!ranked.length) {
-    return {
-      query,
-      primary: null,
-      alsoTry: [],
-      suggestion: suggestionFor(products, query)
-    };
+    .filter((entry) => entry.score > 0);
+}
+
+function sortRankedProducts(ranked) {
+  return ranked.sort(
+    (a, b) =>
+      b.score - a.score ||
+      a.product.name.localeCompare(b.product.name)
+  );
+}
+
+function emptySearchResult(query) {
+  return {
+    query,
+    primary: null,
+    alsoTry: [],
+    suggestion: null
+  };
+}
+
+function noMatchesSearchResult(query, products) {
+  return {
+    query,
+    primary: null,
+    alsoTry: [],
+    suggestion: suggestionFor(products, query)
+  };
+}
+
+export function findProduct(products, rawQuery) {
+  const query = (rawQuery || "").trim();
+  if (!query) {
+    return emptySearchResult("");
   }
+  const ranked = sortRankedProducts(rankProducts(products, query));
+  if (!ranked.length) {
+    return noMatchesSearchResult(query, products);
+  }
+
   const primary = ranked[0].product;
   const related = (primary.also_try || [])
     .map((id) => products.find((product) => product.id === id))
