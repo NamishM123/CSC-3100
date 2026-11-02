@@ -1,6 +1,12 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { loadRemoteCatalog } from "../data/api.js";
-import { AppStateContext } from "./useAppState.js";
+import NotificationState from "./NotificationState.jsx";
+import { useAuthSession } from "./useAuthSession.js";
+import {
+  loadAccountState,
+  saveAccountState,
+  clearAccountState
+} from "../lib/accountStorage.js";
 import {
   price_history,
   prices,
@@ -13,14 +19,14 @@ import {
   stores
 } from "../data/mock.js";
 
-const STORAGE_KEY = "price-pantry-demo";
-
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
 function mockCatalog() {
   return {
+    storesAreDemo: true,
+    pricesAreDemo: true,
     store_chains: clone(store_chains),
     stores: clone(stores),
     products: clone(products),
@@ -41,7 +47,6 @@ function demoLists() {
     includeMember: true,
     suggestSwaps: false,
     acceptedSwapIds: [],
-    saleNotifications: false,
     dietary: [],
     alerts: [],
     routePlan: "split",
@@ -51,19 +56,16 @@ function demoLists() {
 
 function freshState() {
   return {
-    user: null,
     location: null,
     catalog: mockCatalog(),
     ...demoLists()
   };
 }
 
-function loadInitial() {
+function loadInitial(userId) {
   const base = freshState();
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEY);
-    if (!raw) return base;
-    const saved = JSON.parse(raw);
+    const saved = loadAccountState(sessionStorage, userId);
     return {
       ...base,
       ...saved,
@@ -79,12 +81,21 @@ function applyRemote(current, remote) {
   if (remote.store_chains?.length) {
     catalog.store_chains = remote.store_chains;
   }
-  if (remote.stores?.length) catalog.stores = remote.stores;
+  if (remote.stores?.length) {
+    catalog.stores = remote.stores;
+    catalog.storesAreDemo = false;
+  }
   if (remote.products?.length)
     catalog.products = remote.products;
-  if (remote.prices?.length) catalog.prices = remote.prices;
+  if (remote.prices?.length) {
+    catalog.prices = remote.prices;
+    catalog.pricesAreDemo = false;
+  }
   if (remote.price_history?.length) {
     catalog.price_history = remote.price_history;
+  }
+  if (remote.product_swaps?.length) {
+    catalog.product_swaps = remote.product_swaps;
   }
   const next = { ...current, catalog };
   if (!current.listsDirty && remote.shopping_lists?.length) {
@@ -101,50 +112,58 @@ function applyRemote(current, remote) {
   return next;
 }
 
-function persistable(state) {
-  const copy = { ...state };
-  delete copy.catalog;
-  return copy;
+export function AppStateProvider({ children }) {
+  const auth = useAuthSession();
+  return (
+    <AccountStateProvider
+      key={auth.user?.id || "signed-out"}
+      auth={auth}>
+      {children}
+    </AccountStateProvider>
+  );
 }
 
-export function AppStateProvider({ children }) {
-  const [state, setState] = useState(loadInitial);
+function AccountStateProvider({ auth, children }) {
+  const userId = auth.user?.id;
+  const [state, setState] = useState(() => loadInitial(userId));
+  const refreshCatalog = useCallback(async () => {
+    const remote = await loadRemoteCatalog();
+    if (remote)
+      setState((current) => applyRemote(current, remote));
+  }, []);
 
   useEffect(() => {
     try {
-      sessionStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify(persistable(state))
-      );
+      saveAccountState(sessionStorage, userId, state);
     } catch {
       // Private mode or a full disk should not break the demo.
     }
-  }, [state]);
+  }, [state, userId]);
 
   useEffect(() => {
     let cancelled = false;
-    loadRemoteCatalog().then((remote) => {
-      if (cancelled || !remote) return;
-      setState((current) => applyRemote(current, remote));
-    });
+    loadRemoteCatalog({ includeLists: Boolean(userId) }).then(
+      (remote) => {
+        if (cancelled || !remote) return;
+        setState((current) => applyRemote(current, remote));
+      }
+    );
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [userId]);
 
   const api = {
     ...state,
-    signIn(account) {
-      const email = account.email.trim();
-      const fallback = email.split("@")[0] || "Shopper";
-      const name = (account.name || fallback).trim();
-      setState((current) => ({
-        ...current,
-        user: { name, email }
-      }));
+    ...auth,
+    refreshCatalog,
+    async signOut() {
+      await auth.signOut();
+      clearAccountState(sessionStorage, userId);
     },
-    signOut() {
-      setState((current) => ({ ...current, user: null }));
+    async signOutEverywhere() {
+      await auth.signOutEverywhere();
+      clearAccountState(sessionStorage, userId);
     },
     setLocation(location) {
       setState((current) => ({ ...current, location }));
@@ -197,7 +216,7 @@ export function AppStateProvider({ children }) {
           {
             id,
             name: clean,
-            owner_name: current.user?.name || "You",
+            owner_name: auth.user?.name || "You",
             shared_with: []
           }
         ]
@@ -310,12 +329,6 @@ export function AppStateProvider({ children }) {
         };
       });
     },
-    setSaleNotifications(saleNotifications) {
-      setState((current) => ({
-        ...current,
-        saleNotifications
-      }));
-    },
     toggleDietary(filter) {
       setState((current) => {
         const has = current.dietary.includes(filter);
@@ -340,6 +353,14 @@ export function AppStateProvider({ children }) {
         return { ...current, alerts: [alert, ...rest] };
       });
     },
+    removeAlert(productId) {
+      setState((current) => ({
+        ...current,
+        alerts: current.alerts.filter(
+          (alert) => alert.product_id !== productId
+        )
+      }));
+    },
     setRoutePlan(routePlan) {
       setState((current) => ({ ...current, routePlan }));
     },
@@ -353,8 +374,8 @@ export function AppStateProvider({ children }) {
   };
 
   return (
-    <AppStateContext.Provider value={api}>
+    <NotificationState appState={api}>
       {children}
-    </AppStateContext.Provider>
+    </NotificationState>
   );
 }

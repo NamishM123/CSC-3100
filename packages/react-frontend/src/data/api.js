@@ -16,6 +16,15 @@
 // shopping_list_items: id, list_id, product_id, quantity, checked
 // price_history (optional): id, product_id, store_id,
 //   recorded_on, price
+// product_swaps (optional): id, product_id, store_id, name,
+//   size_label, price
+
+import {
+  getSupabaseClient,
+  supabaseConfigured
+} from "../lib/supabase.js";
+
+export { supabaseConfigured } from "../lib/supabase.js";
 
 function asArray(value) {
   if (Array.isArray(value)) return value;
@@ -121,6 +130,13 @@ function normalizeHistory(row) {
   };
 }
 
+function normalizeSwap(row) {
+  return {
+    ...row,
+    price: num(row.price)
+  };
+}
+
 async function readTable(supabase, table) {
   const { data, error } = await supabase
     .from(table)
@@ -135,22 +151,13 @@ async function readTable(supabase, table) {
   return data;
 }
 
-export function supabaseConfigured() {
-  return Boolean(
-    import.meta.env.VITE_SUPABASE_URL &&
-    import.meta.env.VITE_SUPABASE_ANON_KEY
-  );
-}
-
-export async function loadRemoteCatalog() {
-  const url = import.meta.env.VITE_SUPABASE_URL;
-  const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
-  if (!url || !key) return null;
+export async function loadRemoteCatalog({
+  includeLists = false
+} = {}) {
+  if (!supabaseConfigured()) return null;
 
   try {
-    const { createClient } =
-      await import("@supabase/supabase-js");
-    const supabase = createClient(url, key);
+    const supabase = getSupabaseClient();
     const [
       storeChains,
       stores,
@@ -158,15 +165,21 @@ export async function loadRemoteCatalog() {
       prices,
       shoppingLists,
       shoppingListItems,
-      priceHistory
+      priceHistory,
+      productSwaps
     ] = await Promise.all([
       readTable(supabase, "store_chains"),
       readTable(supabase, "stores"),
       readTable(supabase, "products"),
       readTable(supabase, "prices"),
-      readTable(supabase, "shopping_lists"),
-      readTable(supabase, "shopping_list_items"),
-      readTable(supabase, "price_history")
+      includeLists
+        ? readTable(supabase, "shopping_lists")
+        : null,
+      includeLists
+        ? readTable(supabase, "shopping_list_items")
+        : null,
+      readTable(supabase, "price_history"),
+      readTable(supabase, "product_swaps")
     ]);
 
     // Empty tables keep the mock catalog so a brand new
@@ -180,7 +193,9 @@ export async function loadRemoteCatalog() {
       shopping_lists: shoppingLists?.map(normalizeList) ?? null,
       shopping_list_items:
         shoppingListItems?.map(normalizeItem) ?? null,
-      price_history: priceHistory?.map(normalizeHistory) ?? null
+      price_history:
+        priceHistory?.map(normalizeHistory) ?? null,
+      product_swaps: productSwaps?.map(normalizeSwap) ?? null
     };
   } catch (error) {
     console.warn("Price Pantry is using mock data.", error);

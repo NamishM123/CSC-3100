@@ -92,6 +92,12 @@ export function firstName(name) {
 export function safeDest(value) {
   if (typeof value !== "string" || !value.startsWith("/"))
     return null;
+  if (
+    value.startsWith("//") ||
+    value.includes("\\") ||
+    [...value].some((character) => character.charCodeAt(0) < 32)
+  )
+    return null;
   if (value.startsWith("/sign-in")) return null;
   if (value.startsWith("/sign-up")) return null;
   if (value.startsWith("/location")) return null;

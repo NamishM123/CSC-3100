@@ -7,6 +7,7 @@ import {
   useLocation
 } from "react-router-dom";
 import PhoneShell from "./components/PhoneShell.jsx";
+import AuthLoading from "./components/AuthLoading.jsx";
 import Home from "./pages/Home.jsx";
 import { AllowLocation, EnterZip } from "./pages/Location.jsx";
 import Missing from "./pages/Missing.jsx";
@@ -24,8 +25,9 @@ import { AppStateProvider } from "./state/AppState.jsx";
 import { useAppState } from "./state/useAppState.js";
 
 function RequireAuth() {
-  const { user } = useAppState();
+  const { user, authLoading } = useAppState();
   const route = useLocation();
+  if (authLoading) return <AuthLoading />;
   if (!user) {
     return (
       <Navigate

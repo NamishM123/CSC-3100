@@ -74,6 +74,136 @@ export function lowestQuote(options) {
   return quotes[0] || null;
 }
 
+function emptyComparison() {
+  return {
+    activeCount: 0,
+    missing: [],
+    stops: [],
+    splitTotal: 0,
+    single: null,
+    savings: null,
+    extraMinutes: null,
+    oldestUpdatedAt: null
+  };
+}
+
+function productsById(products) {
+  const byId = new Map();
+  for (const product of products) {
+    if (!byId.has(product.id)) byId.set(product.id, product);
+  }
+  return byId;
+}
+
+function quoteLookup(productIds, options) {
+  const quotesByProduct = new Map();
+  const quotesByProductAndStore = new Map();
+  for (const productId of productIds) {
+    const quotes = freshQuotes({ ...options, productId });
+    quotesByProduct.set(productId, quotes);
+    const byStore = new Map();
+    for (const quote of quotes) {
+      if (!byStore.has(quote.store.id)) {
+        byStore.set(quote.store.id, quote);
+      }
+    }
+    quotesByProductAndStore.set(productId, byStore);
+  }
+  return { quotesByProduct, quotesByProductAndStore };
+}
+
+function assignSplitItems(active, byId, quotesByProduct) {
+  const missing = [];
+  const assignments = [];
+  active.forEach((item) => {
+    const product = byId.get(item.product_id);
+    const quotes = quotesByProduct.get(item.product_id) || [];
+    if (!product || quotes.length === 0) {
+      missing.push(
+        product || { id: item.product_id, name: "Unknown item" }
+      );
+      return;
+    }
+    const best = quotes[0];
+    assignments.push({
+      item,
+      product,
+      store: best.store,
+      line: cents(best.unit * item.quantity),
+      unit: best.unit,
+      updated_at: best.updated_at
+    });
+  });
+  return { missing, assignments };
+}
+
+function buildStops(assignments) {
+  const stopsByStore = new Map();
+  assignments.forEach((row) => {
+    const stop = stopsByStore.get(row.store.id) || {
+      store: row.store,
+      items: [],
+      total: 0
+    };
+    stop.items.push(row);
+    stop.total = cents(stop.total + row.line);
+    stopsByStore.set(row.store.id, stop);
+  });
+  return [...stopsByStore.values()].sort(
+    (a, b) => a.store.distance_mi - b.store.distance_mi
+  );
+}
+
+function findSingleStorePlan(
+  active,
+  stores,
+  radiusMi,
+  byId,
+  quotesByProductAndStore
+) {
+  let single = null;
+  for (const store of stores) {
+    if (store.distance_mi > radiusMi) continue;
+    const lines = [];
+    let total = 0;
+    let complete = true;
+    for (const item of active) {
+      const product = byId.get(item.product_id);
+      const quote = quotesByProductAndStore
+        .get(item.product_id)
+        ?.get(store.id);
+      if (!product || !quote) {
+        complete = false;
+        break;
+      }
+      const line = cents(quote.unit * item.quantity);
+      total = cents(total + line);
+      lines.push({
+        item,
+        product,
+        line,
+        updated_at: quote.updated_at
+      });
+    }
+    if (!complete || lines.length !== active.length) continue;
+    if (!single || total < single.total) {
+      single = { store, total, items: lines };
+    }
+  }
+  return single;
+}
+
+function oldestUpdate(assignments, single) {
+  const usedDates = assignments.map((row) => row.updated_at);
+  if (single) {
+    single.items.forEach((row) =>
+      usedDates.push(row.updated_at)
+    );
+  }
+  const dated = usedDates.filter(Boolean).sort();
+  return dated[0] || null;
+}
+
 // Greedy split: each list line goes to the cheapest fresh
 // price inside the radius. The one-store plan is the
 // cheapest store that stocks every line. Extra minutes are
@@ -92,27 +222,18 @@ export function compareList({
   const active = (items || []).filter(
     (item) => !item.checked && item.quantity > 0
   );
-  if (active.length === 0) {
-    return {
-      activeCount: 0,
-      missing: [],
-      stops: [],
-      splitTotal: 0,
-      single: null,
-      savings: null,
-      extraMinutes: null,
-      oldestUpdatedAt: null
-    };
-  }
-  const missing = [];
-  const assignments = [];
+  if (active.length === 0) return emptyComparison();
 
-  active.forEach((item) => {
-    const product = products.find(
-      (entry) => entry.id === item.product_id
-    );
-    const quotes = freshQuotes({
-      productId: item.product_id,
+  const seen = new Set();
+  const productIds = [];
+  for (const item of active) {
+    if (seen.has(item.product_id)) continue;
+    seen.add(item.product_id);
+    productIds.push(item.product_id);
+  }
+  const byId = productsById(products);
+  const { quotesByProduct, quotesByProductAndStore } =
+    quoteLookup(productIds, {
       prices,
       stores,
       radiusMi,
@@ -121,89 +242,26 @@ export function compareList({
       swaps,
       acceptedSwapIds
     });
-    if (!product || quotes.length === 0) {
-      missing.push(
-        product || { id: item.product_id, name: "Unknown item" }
-      );
-      return;
-    }
-    const best = quotes[0];
-    assignments.push({
-      item,
-      product,
-      store: best.store,
-      line: cents(best.unit * item.quantity),
-      unit: best.unit,
-      updated_at: best.updated_at
-    });
-  });
-
-  const stopsMap = new Map();
-  assignments.forEach((row) => {
-    const current = stopsMap.get(row.store.id) || {
-      store: row.store,
-      items: [],
-      total: 0
-    };
-    current.items.push(row);
-    current.total = cents(current.total + row.line);
-    stopsMap.set(row.store.id, current);
-  });
-
-  const stops = [...stopsMap.values()].sort(
-    (a, b) => a.store.distance_mi - b.store.distance_mi
+  const { missing, assignments } = assignSplitItems(
+    active,
+    byId,
+    quotesByProduct
   );
+  const stops = buildStops(assignments);
   const splitTotal = cents(
     stops.reduce((sum, stop) => sum + stop.total, 0)
   );
-
-  let single = null;
-  stores
-    .filter((store) => store.distance_mi <= radiusMi)
-    .forEach((store) => {
-      const lines = [];
-      let total = 0;
-      for (const item of active) {
-        const product = products.find(
-          (entry) => entry.id === item.product_id
-        );
-        const quote = freshQuotes({
-          productId: item.product_id,
-          prices,
-          stores,
-          radiusMi,
-          includeMember,
-          now,
-          swaps,
-          acceptedSwapIds
-        }).find((entry) => entry.store.id === store.id);
-        if (!product || !quote) return;
-        const line = cents(quote.unit * item.quantity);
-        total = cents(total + line);
-        lines.push({
-          item,
-          product,
-          line,
-          updated_at: quote.updated_at
-        });
-      }
-      if (lines.length !== active.length) return;
-      if (!single || total < single.total) {
-        single = { store, total, items: lines };
-      }
-    });
-
+  const single = findSingleStorePlan(
+    active,
+    stores,
+    radiusMi,
+    byId,
+    quotesByProductAndStore
+  );
   const splitDrive = stops.reduce(
     (sum, stop) => sum + stop.store.drive_minutes,
     0
   );
-  const usedDates = assignments.map((row) => row.updated_at);
-  if (single) {
-    single.items.forEach((row) =>
-      usedDates.push(row.updated_at)
-    );
-  }
-  const dated = usedDates.filter(Boolean).sort();
 
   return {
     activeCount: active.length,
@@ -215,6 +273,6 @@ export function compareList({
     extraMinutes: single
       ? splitDrive - single.store.drive_minutes
       : null,
-    oldestUpdatedAt: dated[0] || null
+    oldestUpdatedAt: oldestUpdate(assignments, single)
   };
 }

@@ -2,9 +2,12 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Screen from "../components/Screen.jsx";
 import Sheet from "../components/Sheet.jsx";
+import MfaSettings from "../components/MfaSettings.jsx";
+import NotificationSettings from "../components/NotificationSettings.jsx";
 import { DIETARY_FILTERS } from "../data/mock.js";
 import { money } from "../lib/format.js";
 import { useAppState } from "../state/useAppState.js";
+import { authErrorMessage } from "../lib/auth.js";
 
 const RADIUS_OPTIONS = [1, 5, 10, 15];
 
@@ -14,9 +17,25 @@ export default function Profile() {
   const [radiusOpen, setRadiusOpen] = useState(false);
   const [customRadius, setCustomRadius] = useState("");
   const [customSelected, setCustomSelected] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const [signOutError, setSignOutError] = useState("");
   const initial = (state.user?.name || "P")
     .slice(0, 1)
     .toUpperCase();
+
+  async function logOut(everywhere = false) {
+    setSignOutError("");
+    setSigningOut(true);
+    try {
+      if (everywhere) await state.signOutEverywhere();
+      else await state.signOut();
+      navigate("/sign-in", { replace: true });
+    } catch (error) {
+      setSignOutError(authErrorMessage(error));
+    } finally {
+      setSigningOut(false);
+    }
+  }
 
   return (
     <Screen
@@ -30,6 +49,8 @@ export default function Profile() {
           <p className="muted">{state.user?.email}</p>
         </div>
       </div>
+
+      <MfaSettings />
 
       <section className="profile-block">
         <h2>Location</h2>
@@ -80,27 +101,7 @@ export default function Profile() {
         </button>
       </section>
 
-      <section className="profile-block row">
-        <div>
-          <h2>Sale notifications</h2>
-          <p className="muted">
-            Saved on this device for list items. Not sent yet.
-          </p>
-        </div>
-        <button
-          type="button"
-          className={
-            state.saleNotifications ? "switch on" : "switch"
-          }
-          role="switch"
-          aria-checked={state.saleNotifications}
-          aria-label="Sale notifications"
-          onClick={() =>
-            state.setSaleNotifications(!state.saleNotifications)
-          }>
-          <span />
-        </button>
-      </section>
+      <NotificationSettings />
 
       <section className="profile-block">
         <h2>Dietary filters</h2>
@@ -131,6 +132,14 @@ export default function Profile() {
               <li key={alert.product_id}>
                 {alert.name} below {money(alert.below)} near{" "}
                 {alert.zip}
+                <button
+                  type="button"
+                  className="text-link"
+                  onClick={() =>
+                    state.removeAlert(alert.product_id)
+                  }>
+                  Remove
+                </button>
               </li>
             ))}
           </ul>
@@ -180,13 +189,24 @@ export default function Profile() {
         <button
           type="button"
           className="btn primary"
-          onClick={() => {
-            state.signOut();
-            navigate("/sign-in", { replace: true });
-          }}>
-          Sign out
+          disabled={signingOut}
+          onClick={() => logOut()}>
+          {signingOut ? "Signing out..." : "Sign out"}
+        </button>
+        <button
+          type="button"
+          className="btn ghost"
+          disabled={signingOut}
+          onClick={() => logOut(true)}>
+          Sign out all devices
         </button>
       </div>
+
+      {signOutError ? (
+        <p className="error" role="alert">
+          {signOutError}
+        </p>
+      ) : null}
 
       {radiusOpen ? (
         <Sheet
@@ -212,16 +232,18 @@ export default function Profile() {
 
             <button
               type="button"
-              className={customSelected ? "choice on" : "choice"}
+              className={
+                customSelected ? "choice on" : "choice"
+              }
               onClick={() => {
                 setCustomSelected(true);
                 setCustomRadius(
-                  customRadius || (
-                    !RADIUS_OPTIONS.includes(state.radiusMi) ? String(state.radiusMi) : "20"
-                  )
+                  customRadius ||
+                    (!RADIUS_OPTIONS.includes(state.radiusMi)
+                      ? String(state.radiusMi)
+                      : "20")
                 );
-              }}
-            >
+              }}>
               Custom
             </button>
 
@@ -243,8 +265,7 @@ export default function Profile() {
 
                   state.setRadius(miles);
                   setRadiusOpen(false);
-                }}
-              >
+                }}>
                 <label htmlFor="custom-radius-input">
                   Enter radius in miles (up to 50)
                 </label>

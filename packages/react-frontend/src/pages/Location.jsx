@@ -6,7 +6,7 @@ import {
   useNavigate
 } from "react-router-dom";
 import Screen from "../components/Screen.jsx";
-import { cityForZip } from "../data/mock.js";
+import { coordinatesOf, lookupZip } from "../lib/geo.js";
 import { safeDest } from "../lib/format.js";
 import { useAppState } from "../state/useAppState.js";
 
@@ -32,26 +32,41 @@ export function AllowLocation() {
   const navigate = useNavigate();
   const route = useLocation();
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
 
   if (redirect) return redirect;
 
-  function saveDevice() {
+  function saveDevice(position) {
+    const coordinates = coordinatesOf(position.coords);
+    if (!coordinates) {
+      setBusy(false);
+      setError(
+        "No location was returned. Try again or enter a ZIP code."
+      );
+      return;
+    }
     finish({
-      city: "San Luis Obispo",
-      zip: "93405",
+      ...coordinates,
+      city: "Your location",
+      zip: null,
       source: "device",
+      accuracy: position.coords.accuracy,
       demoNote: false
     });
   }
 
   function allow() {
     setBusy(true);
+    setError("");
     if (!navigator.geolocation) {
-      saveDevice();
+      setBusy(false);
+      setError(
+        "This browser cannot share your location. Enter a ZIP code instead."
+      );
       return;
     }
     navigator.geolocation.getCurrentPosition(
-      () => saveDevice(),
+      saveDevice,
       (error) => {
         setBusy(false);
         if (error.code === 1) {
@@ -60,9 +75,15 @@ export function AllowLocation() {
           });
           return;
         }
-        saveDevice();
+        setError(
+          "Unable to get your location. Try again or enter a ZIP code."
+        );
       },
-      { timeout: 2500, maximumAge: 600000 }
+      {
+        timeout: 10000,
+        maximumAge: 300000,
+        enableHighAccuracy: true
+      }
     );
   }
 
@@ -77,6 +98,11 @@ export function AllowLocation() {
           </p>
         </div>
         <div className="auth-panel">
+          {error ? (
+            <p className="error" role="alert">
+              {error}
+            </p>
+          ) : null}
           <div className="actions">
             <button
               className="btn primary"
@@ -105,24 +131,27 @@ export function EnterZip() {
   const { finish, redirect } = useFinish();
   const route = useLocation();
   const denied = Boolean(route.state?.denied);
-  const [zip, setZip] = useState("93405");
+  const [zip, setZip] = useState("");
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   if (redirect) return redirect;
 
-  function onSubmit(event) {
+  async function onSubmit(event) {
     event.preventDefault();
     if (!/^\d{5}$/.test(zip)) {
       setError("Enter a 5 digit ZIP code.");
       return;
     }
-    const city = cityForZip(zip);
-    finish({
-      city: city || `Near ${zip}`,
-      zip,
-      source: "zip",
-      demoNote: !city
-    });
+    if (busy) return;
+    setError("");
+    setBusy(true);
+    try {
+      finish(await lookupZip(zip));
+    } catch (error) {
+      setError(error.message);
+      setBusy(false);
+    }
   }
 
   return (
@@ -147,6 +176,9 @@ export function EnterZip() {
                 inputMode="numeric"
                 autoComplete="postal-code"
                 maxLength={5}
+                placeholder="e.g. 93405"
+                required
+                disabled={busy}
                 value={zip}
                 onChange={(event) => {
                   setZip(
@@ -164,8 +196,11 @@ export function EnterZip() {
               </p>
             ) : null}
             <div className="actions">
-              <button className="btn primary" type="submit">
-                Show Stores
+              <button
+                className="btn primary"
+                type="submit"
+                disabled={busy}>
+                {busy ? "Finding location..." : "Show Stores"}
               </button>
               <Link
                 className="btn ghost"

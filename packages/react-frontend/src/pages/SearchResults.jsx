@@ -6,14 +6,13 @@ import {
 } from "react-router-dom";
 import Screen from "../components/Screen.jsx";
 import Sheet from "../components/Sheet.jsx";
+import StorePriceCard from "../components/StorePriceCard.jsx";
 import { DEMO_NOW, DIETARY_FILTERS } from "../data/mock.js";
 import { useAppState } from "../state/useAppState.js";
 import {
   ageLabel,
   isStale,
-  miles,
-  money,
-  unitCaption
+  miles
 } from "../lib/format.js";
 import { dietaryStatus, findProduct } from "../lib/search.js";
 
@@ -178,39 +177,17 @@ export default function SearchResults() {
                 ? `/product/${found.primary.id}?warning=stale`
                 : `/product/${found.primary.id}`;
               return (
-                <Link
+                <StorePriceCard
                   key={row.id}
-                  className="card price-row"
-                  to={to}>
-                  <div>
-                    <div className="name-line">
-                      <strong>{row.store.name}</strong>
-                      {row.id === cheapestId ? (
-                        <span className="badge cheap">
-                          Cheapest
-                        </span>
-                      ) : null}
-                      {row.is_sale ? (
-                        <span className="badge sale">Sale</span>
-                      ) : null}
-                      {stale ? (
-                        <span className="badge old">
-                          Old price
-                        </span>
-                      ) : null}
-                    </div>
-                    <p className="muted">
-                      {miles(row.store.distance_mi)} | updated{" "}
-                      {ageLabel(row.updated_at, DEMO_NOW)}
-                    </p>
-                  </div>
-                  <div className="price-col">
-                    <strong>{money(row.price)}</strong>
-                    <span>
-                      {unitCaption(row, found.primary)}
-                    </span>
-                  </div>
-                </Link>
+                  as={Link}
+                  to={to}
+                  row={row}
+                  product={found.primary}
+                  cheapest={row.id === cheapestId}
+                  stale={stale}
+                  staleLabel="Old price"
+                  details={<>{miles(row.store.distance_mi)} | updated {ageLabel(row.updated_at, DEMO_NOW)}</>}
+                />
               );
             })}
           </div>

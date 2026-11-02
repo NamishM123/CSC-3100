@@ -1,5 +1,5 @@
 // Demo catalog shaped like the Supabase tables Price Pantry
-// will use once scrapers write real rows.
+// will use once the API integration writes real rows.
 //
 // store_chains, stores, products, prices, shopping_lists,
 // and shopping_list_items are the core tables.
