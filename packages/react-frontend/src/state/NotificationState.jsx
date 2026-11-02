@@ -20,6 +20,7 @@ import {
   notificationWatch,
   findSaleNotifications
 } from "../lib/saleNotifications.js";
+import { createTestNotification } from "../lib/testNotification.js";
 
 function readSettings(key) {
   try {
@@ -300,17 +301,12 @@ export default function NotificationState({
         );
         record(result.history);
       } else if (test)
-        await showBrowserNotification({
-          id: "price-pantry-test",
-          title: "Price Pantry notifications are working",
-          body: "This test came from the app running on this device.",
-          url: "/profile"
-        });
+        await showBrowserNotification(createTestNotification());
       else await browserCheck();
       setReady(true);
       setStatus(
         test
-          ? "Test notification sent. Check your device's notification center."
+          ? "Test notification submitted. Check your notification center; device settings or Do Not Disturb can hide popup banners."
           : "Saved items checked. New matching offers appear below; previously sent offers are not repeated."
       );
     } catch (failure) {

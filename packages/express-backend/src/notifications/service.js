@@ -1,4 +1,5 @@
 import { findSaleNotifications } from "../../../react-frontend/src/lib/saleNotifications.js";
+import { createTestNotification } from "../../../react-frontend/src/lib/testNotification.js";
 import {
   httpError,
   validateSubscription,
@@ -125,12 +126,10 @@ export function notificationService({
           );
         if (body.action === "test") {
           try {
-            await sendPush(saved.subscription, {
-              id: "price-pantry-test",
-              title: "Price Pantry notifications are working",
-              body: "This test was sent by your local server.",
-              url: "/profile"
-            });
+            await sendPush(
+              saved.subscription,
+              createTestNotification("server")
+            );
           } catch (error) {
             if ([404, 410].includes(error.statusCode)) {
               store.remove(saved.id);
