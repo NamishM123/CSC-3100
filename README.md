@@ -233,6 +233,221 @@ Catalog and shopping-list data still use the prototype data
 layer; Supabase Auth integration does not migrate that data to
 the lookup model.
 
+### TE6: Access control and sequence diagrams
+
+Price Pantry already implements the exercise through Supabase
+Auth and the Express authentication middleware. Supabase Auth is
+the authentication backend: React sends credentials directly to
+it, rather than to new Express `/signup` and `/login` routes.
+Email is the login identifier. The class example's route names,
+in-memory credential array, and token secret are therefore not
+needed in Express.
+
+| TE6 requirement                             | Implementation in this project                                                                                                                                              |
+| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Sign-up and sign-in forms                   | `pages/SignUp.jsx`, `pages/SignIn.jsx`                                                                                                                                      |
+| Persistent credentials and password hashing | Supabase Auth database; salted bcrypt hashes                                                                                                                                |
+| Token generation and client storage         | Supabase issues access JWTs and refresh tokens; its SDK persists the session in browser local storage and refreshes it                                                      |
+| Send tokens to protected endpoints          | `lib/pushNotifications.js` sends `Authorization: Bearer <access_token>`; the SDK also attaches the session token to Data API requests                                       |
+| Backend authentication and failures         | Express `requireAuth()` in `src/auth.js`; missing/invalid/expired tokens return 401, unfinished required MFA returns 403, unavailable Auth returns 503                      |
+| Prevent access to other accounts' data      | Notification queries use the verified `req.user.id`; local lists use account-scoped session storage; prototype database lists are denied by the existing security migration |
+| Protect app views                           | `RequireAuth` in `App.jsx` waits for session validation and redirects to `/sign-in` while preserving the destination                                                        |
+
+The diagrams below describe the current implementation. React
+file paths are relative to `packages/react-frontend/src`, and
+Express paths to `packages/express-backend`. GitHub renders
+these editable Mermaid diagrams directly in this README. Update
+them when authentication or storage changes.
+
+#### Sign-up: create persistent credentials
+
+```mermaid
+sequenceDiagram
+    actor Shopper
+    participant FE as React SignUp / useAuthSession
+    participant SDK as Supabase browser SDK
+    participant Auth as Supabase Auth backend
+    participant DB as Supabase Auth database
+
+    Shopper->>FE: Submit name, email, password
+    FE->>FE: Validate name, email, password length / byte limit
+    FE->>SDK: auth.signUp(email, password, name metadata)
+    SDK->>Auth: POST /auth/v1/signup (credentials in HTTPS JSON body)
+    Auth->>Auth: Enforce configured password policy and signup limits
+    Auth->>DB: Check whether account already exists
+    DB-->>Auth: Account lookup result
+    alt Signup rejected (invalid input, account conflict, or rate limit)
+        Auth-->>SDK: Auth error (existing-account details may be concealed)
+        SDK-->>FE: error
+        FE-->>Shopper: Show error; remain on signup
+    else New account accepted
+        Auth->>Auth: Hash password with bcrypt and a random salt
+        Auth->>DB: Store account with password hash and name metadata
+        DB-->>Auth: Account persisted (hash stays server-side)
+        alt Email confirmation required
+            Auth-->>Shopper: Send confirmation email
+            Auth-->>SDK: User with no active session
+            SDK-->>FE: data.session is null
+            FE-->>Shopper: Show check-email message
+            Shopper->>Auth: Follow confirmation link
+            Auth->>DB: Mark email confirmed
+            Auth-->>FE: Redirect to /sign-in for callback / sign-in
+            Note over FE,Auth: SDK completes PKCE callback when a code is supplied
+        else Confirmation disabled and signup returns a session
+            Auth-->>SDK: User, signed access JWT, refresh token
+            SDK->>SDK: Persist session and emit Auth event
+            SDK-->>FE: Validate session before opening protected views
+        end
+    end
+    Note over FE,DB: Password input is cleared after the attempt; app storage never contains passwords or hashes
+```
+
+Supabase owns credential persistence and hashing; `public.users`
+is a separate application table and has no password column. See
+[password storage](https://supabase.com/docs/guides/auth/password-security)
+and
+[signup and confirmation behavior](https://supabase.com/docs/reference/javascript/auth-signup).
+
+#### Sign-in: verify password and finish enrolled 2FA
+
+```mermaid
+sequenceDiagram
+    actor Shopper
+    participant FE as React SignIn / useAuthSession
+    participant SDK as Supabase browser SDK
+    participant Auth as Supabase Auth backend
+    participant DB as Supabase Auth database
+
+    Shopper->>FE: Submit email and password
+    FE->>SDK: auth.signInWithPassword(email, password)
+    SDK->>Auth: POST /auth/v1/token?grant_type=password (HTTPS JSON body)
+    Auth->>DB: Look up account and stored bcrypt hash
+    DB-->>Auth: Account, hash, confirmation status
+    Auth->>Auth: Compare password against hash
+    alt Incorrect credentials or unconfirmed email
+        Auth-->>SDK: Authentication error
+        SDK-->>FE: error
+        FE-->>Shopper: Display sign-in error
+    else Credentials accepted
+        Auth-->>SDK: User, signed access JWT, refresh token
+        SDK->>SDK: Persist session; schedule automatic refresh
+        SDK-->>FE: Auth state change
+        FE->>Auth: getUser(exact access token)
+        Auth->>DB: Read current user and enrolled factors
+        DB-->>Auth: User and factor status
+        Auth-->>FE: Verified identity and current factors
+        FE->>SDK: Read token assurance level
+        alt Verified factor exists and token is not aal2
+            FE-->>Shopper: Keep app locked; request authenticator code
+            Shopper->>FE: Enter six-digit TOTP code
+            FE->>Auth: mfa.challengeAndVerify(factorId, code)
+            Auth->>DB: Read factor and verify challenge
+            DB-->>Auth: Verification result
+            alt Code accepted
+                Auth-->>SDK: Updated session with aal2 access JWT
+                SDK->>SDK: Persist updated session
+                FE->>FE: Recheck identity and assurance; unlock app
+            else Code incorrect or expired
+                Auth-->>FE: Verification error
+                FE-->>Shopper: Show error; remain locked
+            end
+        else No verified factor or session already at aal2
+            FE->>FE: Set verified app user; open destination / location setup
+        end
+    end
+    Note over FE,DB: Reloads and Google sign-in use the same identity / MFA gate; failed checks keep private views locked
+```
+
+#### Protected request: authenticate and enforce row ownership
+
+This example is the existing background-notification history
+request. It requires `npm run dev:local` and an enrolled browser
+push subscription. `/api/session` uses the same Auth guard and
+returns only the caller's ID, email, and assurance level.
+
+```mermaid
+sequenceDiagram
+    actor Shopper
+    participant FE as React / pushNotifications.js
+    participant SDK as Supabase browser SDK
+    participant API as Express requireAuth / notificationService
+    participant Auth as Supabase Auth backend
+    participant AuthDB as Supabase Auth database
+    participant DB as Local SQLite notification database
+
+    Shopper->>FE: Open background notification history
+    FE->>SDK: auth.getSession()
+    SDK-->>FE: Current access token (refresh when needed)
+    FE->>API: POST /api/notifications, Bearer token, endpoint and action=status
+    alt Missing or malformed Bearer header
+        API-->>FE: 401 Sign in to continue
+    else Bearer token supplied
+        API->>Auth: GET /auth/v1/user with exact Bearer token and public API key
+        Auth->>Auth: Validate token signature and expiry
+        opt Valid token
+            Auth->>AuthDB: Read user and current MFA factors
+            AuthDB-->>Auth: User and factors
+        end
+        Auth-->>API: Verified user, invalid-token error, or service failure
+        alt Invalid / expired / forged token or subject mismatch
+            API-->>FE: 401 Invalid or expired session
+        else Auth service unavailable
+            API-->>FE: 503 Authentication unavailable
+        else Enrolled factor exists but JWT is not aal2
+            API-->>FE: 403 Complete two-factor authentication
+        else Authentication and MFA checks pass
+            API->>API: Set req.user from verified identity
+            API->>DB: SELECT subscription WHERE user_id=req.user.id AND endpoint=?
+            DB-->>API: Caller's subscription or no matching row
+            alt Subscription belongs to caller
+                API->>DB: Read delivery history for that subscription
+                DB-->>API: History rows
+                API-->>FE: 200 JSON history and checkedAt
+                FE-->>Shopper: Show history
+            else Subscription absent or belongs to another account
+                API-->>FE: 404 No accessible subscription
+            end
+        end
+    end
+    Note over FE,API: Non-success responses become visible errors; protected data is not replaced by demo data
+    Note over API,DB: Caller-supplied user IDs never authorize queries; responses use Cache-Control: no-store
+```
+
+For notification creation/update, Express also derives ownership
+from `req.user.id`; claiming another account's existing endpoint
+returns **409**. Deleting one endpoint or all subscriptions is
+likewise scoped to the verified account.
+
+Direct Supabase Data API calls are separately enforced by
+database row-level security (RLS), even if someone bypasses the
+React views. The existing
+[security migration](./supabase/migrations/202610290002_mfa_access.sql)
+must be applied to the connected Supabase project using the
+[setup steps below](#3-apply-the-database-enforcement-migration).
+It restricts enrolled accounts to MFA-verified sessions and
+denies browser access to legacy list tables until real
+owner/member policies exist. Removing frontend list reads does
+not replace this database protection. See
+[Supabase RLS](https://supabase.com/docs/guides/database/postgres/row-level-security).
+
+Shopping lists remain sample/local data in this version; the
+catalog loader never queries or imports database shopping lists.
+Account-specific lists, location, and searches load only after
+authentication passes, use separate per-account session-storage
+keys, and clear from the current tab on sign-out. Public catalog
+failures can still retain demo catalog rows; private API
+failures show errors instead.
+
+Validate TE6 with `npm test`, `npm run lint`, and
+`npm run build`, then use test accounts to check signup,
+confirmation, incorrect passwords, sign-in/reload, optional 2FA,
+and sign-out. The
+[API and database verification checklist](#5-verify-api-and-database-enforcement)
+covers unauthorized requests and isolation between accounts.
+Automated tests use stubbed Auth responses and local storage /
+SQLite; they do not confirm settings or policies in a hosted
+Supabase project.
+
 ### Activate two-factor authentication and security
 
 The application supports optional authenticator-app (TOTP) 2FA.
@@ -542,24 +757,35 @@ The collections match the tables we expect later:
 `shopping_lists`, and `shopping_list_items`. `price_history`
 feeds the 30 day chart.
 
-`src/data/api.js` reads those tables when both of these are set:
+`src/data/api.js` reads only public catalog tables when both of
+these are set. Shopping lists and items stay local to the
+verified account and are never fetched by the catalog loader:
 
 - `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_ANON_KEY`
+- `VITE_SUPABASE_PUBLISHABLE_KEY` (or `VITE_SUPABASE_ANON_KEY`)
 
 If they are missing, or a query fails, the screen keeps the mock
 rows. To connect a Supabase project locally:
 
-1. Create a Supabase project and open its SQL Editor.
-2. Run [`supabase/schema.sql`](./supabase/schema.sql). It
-   creates the tables, indexes, and read-only demo policies
-   expected by the app.
+1. Use the Supabase project configured for this app's Auth
+   accounts and open its SQL Editor.
+2. For a fresh database, run
+   [`supabase/schema.sql`](./supabase/schema.sql). It creates
+   the newer live-lookup schema, which is different from the
+   prototype catalog. For an existing prototype, use
+   [`202610280001_live_lookup_schema.sql`](./supabase/migrations/202610280001_live_lookup_schema.sql)
+   instead; do not rerun the fresh schema over existing tables.
+   Apply the
+   [security migration](./supabase/migrations/202610290002_mfa_access.sql)
+   afterward to enforce MFA and close legacy list access.
 3. Copy `packages/react-frontend/.env.example` to
    `packages/react-frontend/.env.local` and replace both
    placeholders with the Project URL and publishable (or legacy
    anon) key from the Supabase **Connect** dialog.
-4. Add catalog rows in the Supabase Table Editor or import rows
-   based on `packages/react-frontend/src/data/mock.js`.
+4. Existing prototype catalog tables can supply rows compatible
+   with `packages/react-frontend/src/data/mock.js`. The current
+   frontend has not migrated to the live-lookup data model;
+   missing prototype collections retain their demo rows.
 5. Restart `npm run dev` after changing environment variables.
 
 Do not commit `.env.local`, and never put a Supabase

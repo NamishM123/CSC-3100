@@ -97,19 +97,7 @@ function applyRemote(current, remote) {
   if (remote.product_swaps?.length) {
     catalog.product_swaps = remote.product_swaps;
   }
-  const next = { ...current, catalog };
-  if (!current.listsDirty && remote.shopping_lists?.length) {
-    next.lists = remote.shopping_lists;
-    if (
-      !next.lists.some((list) => list.id === next.activeListId)
-    ) {
-      next.activeListId = next.lists[0].id;
-    }
-    if (remote.shopping_list_items?.length) {
-      next.items = remote.shopping_list_items;
-    }
-  }
-  return next;
+  return { ...current, catalog };
 }
 
 export function AppStateProvider({ children }) {
@@ -142,12 +130,10 @@ function AccountStateProvider({ auth, children }) {
 
   useEffect(() => {
     let cancelled = false;
-    loadRemoteCatalog({ includeLists: Boolean(userId) }).then(
-      (remote) => {
-        if (cancelled || !remote) return;
-        setState((current) => applyRemote(current, remote));
-      }
-    );
+    loadRemoteCatalog().then((remote) => {
+      if (cancelled || !remote) return;
+      setState((current) => applyRemote(current, remote));
+    });
     return () => {
       cancelled = true;
     };
