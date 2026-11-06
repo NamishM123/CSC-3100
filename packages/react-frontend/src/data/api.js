@@ -12,8 +12,8 @@
 // prices: id, store_id, product_id, price, regular_price,
 //   unit_price, unit, is_member_price, is_sale, in_stock,
 //   updated_at, source
-// shopping_lists: id, name, owner_name, shared_with
-// shopping_list_items: id, list_id, product_id, quantity, checked
+// Lists stay local to the verified account. The prototype list tables lack
+// enforceable ownership and must never be loaded as a shared catalog.
 // price_history (optional): id, product_id, store_id,
 //   recorded_on, price
 // product_swaps (optional): id, product_id, store_id, name,
@@ -47,22 +47,6 @@ function num(value) {
   if (value == null || value === "") return null;
   const parsed = Number(value);
   return Number.isNaN(parsed) ? null : parsed;
-}
-
-function asPeople(value) {
-  return asArray(value).map((person) => {
-    if (typeof person === "string") {
-      return {
-        name: person,
-        initial: person.slice(0, 1).toUpperCase()
-      };
-    }
-    const name = person.name || "Member";
-    return {
-      name,
-      initial: person.initial || name.slice(0, 1).toUpperCase()
-    };
-  });
 }
 
 function normalizeChain(row) {
@@ -108,21 +92,6 @@ function normalizePrice(row) {
   };
 }
 
-function normalizeList(row) {
-  return {
-    ...row,
-    shared_with: asPeople(row.shared_with)
-  };
-}
-
-function normalizeItem(row) {
-  return {
-    ...row,
-    quantity: num(row.quantity) ?? 1,
-    checked: Boolean(row.checked)
-  };
-}
-
 function normalizeHistory(row) {
   return {
     ...row,
@@ -151,9 +120,7 @@ async function readTable(supabase, table) {
   return data;
 }
 
-export async function loadRemoteCatalog({
-  includeLists = false
-} = {}) {
+export async function loadRemoteCatalog() {
   if (!supabaseConfigured()) return null;
 
   try {
@@ -163,8 +130,6 @@ export async function loadRemoteCatalog({
       stores,
       products,
       prices,
-      shoppingLists,
-      shoppingListItems,
       priceHistory,
       productSwaps
     ] = await Promise.all([
@@ -172,12 +137,6 @@ export async function loadRemoteCatalog({
       readTable(supabase, "stores"),
       readTable(supabase, "products"),
       readTable(supabase, "prices"),
-      includeLists
-        ? readTable(supabase, "shopping_lists")
-        : null,
-      includeLists
-        ? readTable(supabase, "shopping_list_items")
-        : null,
       readTable(supabase, "price_history"),
       readTable(supabase, "product_swaps")
     ]);
@@ -190,9 +149,6 @@ export async function loadRemoteCatalog({
       stores: stores?.map(normalizeStore) ?? null,
       products: products?.map(normalizeProduct) ?? null,
       prices: prices?.map(normalizePrice) ?? null,
-      shopping_lists: shoppingLists?.map(normalizeList) ?? null,
-      shopping_list_items:
-        shoppingListItems?.map(normalizeItem) ?? null,
       price_history:
         priceHistory?.map(normalizeHistory) ?? null,
       product_swaps: productSwaps?.map(normalizeSwap) ?? null

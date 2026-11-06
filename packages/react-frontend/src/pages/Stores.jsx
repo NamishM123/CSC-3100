@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import Screen from "../components/Screen.jsx";
 import StoreCard from "../components/StoreCard.jsx";
@@ -12,6 +12,7 @@ import { useAppState } from "../state/useAppState.js";
 export default function Stores() {
   const { catalog, location, radiusMi } = useAppState();
   const [mode, setMode] = useState("map");
+  const [selectedStoreId, setSelectedStoreId] = useState(null);
   const { place, loading, error, retry } =
     useMapLocation(location);
   const stores = useMemo(
@@ -126,11 +127,13 @@ export default function Stores() {
           ) : null}
           <div className="stack cards-grid">
             {stores.map((store) => (
-              <div key={store.id} className={
-                selectedStoreId === store.id
-                  ? "store-result selected"
-                  : "store-result"
-              }
+              <div
+                key={store.id}
+                className={
+                  selectedStoreId === store.id
+                    ? "store-result selected"
+                    : "store-result"
+                }
                 onClick={() => setSelectedStoreId(store.id)}>
                 <StoreCard
                   key={store.id}
