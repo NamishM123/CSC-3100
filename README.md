@@ -56,9 +56,13 @@ notification APIs; Vite proxies `/api` to it on port 8000.
 
 ### Local sale and price notifications — no Vercel required
 
-Notifications support two delivery modes in **Profile → Sale
-notifications**. Both require browser permission and a signed-in
-account. An account with 2FA must finish verification first.
+During local development, notifications support two delivery
+modes in **Profile → Sale notifications**. Both require browser
+permission and a signed-in account. An account with 2FA must
+finish verification first. Production builds, including Vercel,
+offer only **While the app is open**. A saved local background
+setting is reset to disabled browser delivery in production;
+turn notifications on again to opt in.
 
 **While the app is open** works with `npm run dev` alone. Choose
 that mode, turn notifications on, and allow permission. The tab
@@ -807,17 +811,33 @@ settings if the form does not already match the root
 | ---------------- | --------------------------------- |
 | Root Directory   | `.` (repository root)             |
 | Framework Preset | Vite                              |
-| Install Command  | `npm install`                     |
+| Install Command  | `npm ci`                          |
 | Build Command    | `npm run build -w react-frontend` |
 | Output Directory | `packages/react-frontend/dist`    |
+| Node.js Version  | `24.x`                            |
 
-Optional environment variables, same names as `.env.example`:
+Before deploying, add these environment variables in **Vercel →
+Project Settings → Environment Variables**, using the same
+Supabase project as local development:
 
 - `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_ANON_KEY`
+- `VITE_SUPABASE_PUBLISHABLE_KEY` (or `VITE_SUPABASE_ANON_KEY`)
 
-Leave them empty to ship the mock catalog. Add them for
-Production, Preview, and Development if you want Supabase.
+Set them for Production and Preview (and Development if using
+Vercel's development tools). The ignored local `.env.local` file
+is not uploaded by Git. Supabase is required for sign-in even
+when using sample catalog data; Vercel builds fail with an
+actionable error if these settings are missing. Use only the
+public publishable/anon key. Redeploy after changing environment
+variables because Vite embeds them at build time.
+
+In **Supabase → Authentication → URL Configuration**, set the
+Site URL to your production HTTPS URL and add
+`https://<your-domain>/sign-in` to Redirect URLs. Add the
+specific preview `/sign-in` URLs you intend to use as well. Keep
+`http://localhost:5173/**` allowed for local development. Google
+login also requires the provider configuration described in
+[Authentication](#authentication).
 
 The root `vercel.json` rewrites deep links such as `/list` and
 `/product/prod-bananas` to `index.html`, so the React router can
@@ -827,8 +847,27 @@ You can instead set the Root Directory to
 `packages/react-frontend`, Framework Preset to Vite, Build
 Command to `npm run build`, and Output Directory to `dist`. That
 folder has its own `vercel.json` rewrite. If install fails
-because of npm workspaces, set the Install Command to
-`cd ../.. && npm install`.
+because the project cannot access the workspace root, enable
+**Include source files outside of the Root Directory in the
+Build Step** in Vercel's project settings. The frontend config
+already installs from the repository root using
+`cd ../.. && npm ci`.
+
+Vercel hosts the website and browser alerts while the app is
+open. The local background delivery option is hidden in
+production. Express, SQLite watches, and its interval scheduler
+remain local; no server environment variables, VAPID keys, or
+cron jobs are needed for this deployment. Browser alerts stop
+being checked when the app closes, and browser suspension can
+delay checks. Hosting that SQLite implementation in a Vercel
+function would not provide persistent storage; see the
+[Vercel runtime documentation](https://vercel.com/docs/functions/runtimes).
+
+After deployment, sign in, refresh a direct URL such as `/list`,
+check ZIP lookup and the store map, then enable notifications in
+Profile and select **Send test notification**. Confirm the
+browser's notification permission and OS settings if no banner
+appears.
 
 ### Express on Vercel later
 

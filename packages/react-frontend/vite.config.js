@@ -1,4 +1,5 @@
 import react from "@vitejs/plugin-react";
+import { env as processEnv } from "node:process";
 import { defineConfig, loadEnv } from "vite";
 import { validateAuthConfig } from "./src/lib/authConfig.js";
 
@@ -9,6 +10,15 @@ export default defineConfig(({ command, mode }) => {
   const key =
     env.VITE_SUPABASE_PUBLISHABLE_KEY ||
     env.VITE_SUPABASE_ANON_KEY;
+  if (
+    command === "build" &&
+    processEnv.VERCEL === "1" &&
+    (!url || !key)
+  ) {
+    throw new Error(
+      "Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY (or VITE_SUPABASE_ANON_KEY) in the Vercel project's environment variables, then redeploy. Sign-in requires Supabase."
+    );
+  }
   // Stop private keys from reaching generated JS, rather than detecting them
   // only after the browser has downloaded the bundle.
   if (url || key) {
