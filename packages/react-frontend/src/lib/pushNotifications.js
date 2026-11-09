@@ -4,6 +4,9 @@ import {
   notificationRegistration
 } from "./browserNotifications.js";
 
+// The SQLite notification server runs only alongside the development app.
+export const backgroundPushAvailable = import.meta.env.DEV;
+
 async function request(method, body) {
   const client = getSupabaseClient();
   if (!client)

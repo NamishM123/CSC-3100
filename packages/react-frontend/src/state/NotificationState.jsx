@@ -11,6 +11,7 @@ import {
   showBrowserNotification
 } from "../lib/browserNotifications.js";
 import {
+  backgroundPushAvailable,
   enablePush,
   syncPush,
   pushAction,
@@ -25,9 +26,14 @@ import { createTestNotification } from "../lib/testNotification.js";
 function readSettings(key) {
   try {
     const saved = JSON.parse(localStorage.getItem(key));
+    const unavailablePush =
+      saved?.mode === "push" && !backgroundPushAvailable;
     return {
-      enabled: saved?.enabled === true,
-      mode: saved?.mode === "push" ? "push" : "browser",
+      enabled: saved?.enabled === true && !unavailablePush,
+      mode:
+        saved?.mode === "push" && backgroundPushAvailable
+          ? "push"
+          : "browser",
       history: Array.isArray(saved?.history)
         ? saved.history.slice(0, 30)
         : [],
@@ -353,7 +359,8 @@ export default function NotificationState({
           if (
             !enabled &&
             !busy &&
-            ["browser", "push"].includes(value)
+            (value === "browser" ||
+              (value === "push" && backgroundPushAvailable))
           ) {
             setSettings((current) => ({
               ...current,

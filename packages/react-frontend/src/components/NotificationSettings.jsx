@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useAppState } from "../state/useAppState.js";
+import { backgroundPushAvailable } from "../lib/pushNotifications.js";
 
 export default function NotificationSettings() {
   const state = useAppState();
@@ -49,26 +50,35 @@ export default function NotificationSettings() {
             />{" "}
             While the app is open
           </label>
-          <label>
-            <input
-              type="radio"
-              name="notification-mode"
-              checked={state.notificationMode === "push"}
-              onChange={() => state.setNotificationMode("push")}
-            />{" "}
-            Background via local server
-          </label>
+          {backgroundPushAvailable ? (
+            <label>
+              <input
+                type="radio"
+                name="notification-mode"
+                checked={state.notificationMode === "push"}
+                onChange={() =>
+                  state.setNotificationMode("push")
+                }
+              />{" "}
+              Background via local server
+            </label>
+          ) : null}
         </fieldset>
-        <p className="fine">
-          Turn notifications off before changing delivery mode.
-        </p>
+        {backgroundPushAvailable ? (
+          <p className="fine">
+            Turn notifications off before changing delivery
+            mode.
+          </p>
+        ) : null}
         <p id="notification-status" className="muted">
           {state.notificationPermission === "denied"
             ? "Notifications are blocked in your browser's site settings."
             : state.notificationPermission === "unsupported"
               ? "Notifications need a supported browser on HTTPS or localhost. On iPhone/iPad, open an installed Home Screen app."
               : !state.saleNotifications
-                ? "Choose a delivery mode, then turn notifications on and allow browser permission."
+                ? backgroundPushAvailable
+                  ? "Choose a delivery mode, then turn notifications on and allow browser permission."
+                  : "Turn notifications on and allow browser permission. Keep this app open to receive alerts."
                 : state.notificationMode === "push"
                   ? "The local server checks saved watches every minute while it is running. Keep this computer awake and online."
                   : "This tab checks saved items every minute while it is open. Browser suspension can delay checks."}
