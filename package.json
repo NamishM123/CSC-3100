@@ -1,6 +1,7 @@
 {
   "name": "csc-3100",
   "private": true,
+  "type": "module",
   "engines": {
     "node": "24.x"
   },
