@@ -50,7 +50,8 @@ function demoLists() {
     dietary: [],
     alerts: [],
     routePlan: "split",
-    radiusMi: 5
+    radiusMi: 5,
+    krogerPriceWeight: 0.7
   };
 }
 
@@ -143,6 +144,64 @@ function AccountStateProvider({ auth, children }) {
     ...state,
     ...auth,
     refreshCatalog,
+    addRequestedItem(listId, query) {
+      const clean = query.trim();
+      if (!clean || clean.length > 120) return;
+      setState((current) => {
+        const existing = current.items.find(
+          (item) =>
+            item.list_id === listId &&
+            item.query?.toLowerCase() === clean.toLowerCase()
+        );
+        return {
+          ...current,
+          listsDirty: true,
+          items: existing
+            ? current.items.map((item) =>
+                item.id === existing.id
+                  ? {
+                      ...item,
+                      quantity: Math.min(99, item.quantity + 1),
+                      checked: false
+                    }
+                  : item
+              )
+            : [
+                ...current.items,
+                {
+                  id: `item-${crypto.randomUUID()}`,
+                  list_id: listId,
+                  product_id: `request-${crypto.randomUUID()}`,
+                  query: clean,
+                  quantity: 1,
+                  checked: false
+                }
+              ]
+        };
+      });
+    },
+    setStoreProduct(itemId, storeId, productId) {
+      setState((current) => ({
+        ...current,
+        items: current.items.map((item) =>
+          item.id === itemId
+            ? {
+                ...item,
+                storeSelections: {
+                  ...item.storeSelections,
+                  [storeId]: productId
+                }
+              }
+            : item
+        )
+      }));
+    },
+    setKrogerPriceWeight(krogerPriceWeight) {
+      setState((current) => ({
+        ...current,
+        krogerPriceWeight
+      }));
+    },
     async signOut() {
       await auth.signOut();
       clearAccountState(sessionStorage, userId);

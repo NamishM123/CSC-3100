@@ -45,6 +45,25 @@ test("passwords, Auth tokens, factor secrets, and profiles are excluded from app
   assert.deepEqual(loadAccountState(cache, "a"), { lists: [] });
 });
 
+test("Kroger list requests, per-store product choices, and score priority persist for their account", () => {
+  const cache = storage();
+  const saved = {
+    items: [
+      {
+        id: "milk",
+        list_id: "list",
+        query: "2% milk",
+        quantity: 2,
+        storeSelections: { kroger: "brand:size" }
+      }
+    ],
+    krogerPriceWeight: 0.5
+  };
+  saveAccountState(cache, "a", saved);
+  assert.deepEqual(loadAccountState(cache, "a"), saved);
+  assert.deepEqual(loadAccountState(cache, "b"), {});
+});
+
 test("logout clears the active account and legacy unscoped cache without touching another account", () => {
   const cache = storage();
   saveAccountState(cache, "a", { alerts: ["a"] });

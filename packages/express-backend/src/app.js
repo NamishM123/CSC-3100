@@ -1,7 +1,12 @@
 import express from "express";
 import { requireAuth } from "./auth.js";
+import { createKrogerHandler } from "./kroger.js";
 
-export function createApp({ auth, notifications } = {}) {
+export function createApp({
+  auth,
+  notifications,
+  kroger
+} = {}) {
   const app = express();
   app.disable("x-powered-by");
   app.use((_req, res, next) => {
@@ -24,6 +29,11 @@ export function createApp({ auth, notifications } = {}) {
   app.get("/health", (_req, res) => res.json({ status: "ok" }));
   app.get("/api/session", requireAuth(auth), (req, res) =>
     res.json({ user: req.user })
+  );
+  app.post(
+    "/api/kroger",
+    requireAuth(auth),
+    createKrogerHandler(kroger)
   );
   if (notifications)
     app.all(
