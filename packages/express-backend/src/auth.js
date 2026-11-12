@@ -87,7 +87,7 @@ export function requireAuth({
     )?.[1];
     try {
       req.user = await verifiedSession(token, getUser);
-      next();
+      return next();
     } catch (error) {
       res.status(error.status || 503).json({
         error: error.status

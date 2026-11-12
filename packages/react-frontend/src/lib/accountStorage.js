@@ -13,7 +13,8 @@ const FIELDS = [
   "dietary",
   "alerts",
   "routePlan",
-  "radiusMi"
+  "radiusMi",
+  "krogerPriceWeight"
 ];
 
 function persistable(state) {

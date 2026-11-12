@@ -1199,7 +1199,6 @@ input[type="radio"] {
 }
 
 @media (min-width: 1024px) {
-
   body,
   .stage {
     background: #f3f6f3;
@@ -1330,8 +1329,10 @@ input[type="radio"] {
 
   .auth {
     display: grid;
-    grid-template-columns: minmax(280px, 1fr) minmax(380px,
-        460px);
+    grid-template-columns: minmax(280px, 1fr) minmax(
+        380px,
+        460px
+      );
     gap: 64px;
     align-items: center;
     min-height: calc(100dvh - 120px);
@@ -1446,7 +1447,7 @@ input[type="radio"] {
 
   .compare-columns .best,
   .compare-columns .plan,
-  .compare-side>.card {
+  .compare-side > .card {
     margin-top: 0;
     margin-bottom: 0;
   }
@@ -1490,8 +1491,10 @@ input[type="radio"] {
 
   .stores-layout.map-mode {
     display: grid;
-    grid-template-columns: minmax(0, 1.35fr) minmax(280px,
-        0.8fr);
+    grid-template-columns: minmax(0, 1.35fr) minmax(
+        280px,
+        0.8fr
+      );
     gap: 20px;
     align-items: start;
   }
@@ -1773,7 +1776,6 @@ button:disabled {
 }
 
 @media (prefers-reduced-motion: reduce) {
-
   *,
   *::before,
   *::after {
@@ -1933,4 +1935,37 @@ button:disabled {
   border-radius: 50% 50% 50% 0;
   box-shadow: 0 3px 12px rgba(0, 0, 0, 0.35);
   transform: rotate(-45deg) scale(1.15);
+}
+.kroger-recommendations {
+  margin-block: 1.5rem;
+}
+
+.list-product-placeholder {
+  text-align: center;
+  font-size: 1.75rem;
+}
+
+.kroger-store-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 1rem;
+}
+
+.kroger-product-choice {
+  min-width: 0;
+  border-top: 1px solid var(--line, #ddd);
+  padding-top: 0.75rem;
+}
+
+.kroger-recommendations select {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0.65rem;
+  font: inherit;
+  border: 1px solid var(--line, #ddd);
+  border-radius: 0.5rem;
+  background: var(--surface, #fff);
+  color: inherit;
 }

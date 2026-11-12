@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Screen from "../components/Screen.jsx";
 import Sheet from "../components/Sheet.jsx";
+import KrogerRecommendations from "../components/KrogerRecommendations.jsx";
 import { DEMO_NOW } from "../data/mock.js";
 import { compareList, lowestQuote } from "../lib/compare.js";
 import { cents, joinNames, money } from "../lib/format.js";
@@ -13,6 +14,7 @@ export default function ShoppingList() {
   const [editing, setEditing] = useState(false);
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
+  const [requestedItem, setRequestedItem] = useState("");
   const list =
     state.lists.find(
       (entry) => entry.id === state.activeListId
@@ -60,17 +62,26 @@ export default function ShoppingList() {
       chrome={false}
       className="list-screen"
       dock={
-        rows.length ? (
+        rows.some((item) => item.query) ? (
+          <Link className="btn primary" to="/list/optimize">
+            Compare nearby Kroger stores
+          </Link>
+        ) : rows.length ? (
           <>
             <div className="desktop-only summary-panel">
-              <p className="summary-kicker">Cheapest total</p>
+              <p className="summary-kicker">
+                {state.catalog.pricesAreDemo
+                  ? "Sample catalog total"
+                  : "Catalog total"}
+              </p>
               <div className="summary-figure">
                 <span>
                   {plan.stops.length
-                    ? `Split across ${plan.stops.length} ${plan.stops.length === 1
-                      ? "store"
-                      : "stores"
-                    }`
+                    ? `Split across ${plan.stops.length} ${
+                        plan.stops.length === 1
+                          ? "store"
+                          : "stores"
+                      }`
                     : "Split across stores"}
                 </span>
                 <strong>
@@ -87,14 +98,14 @@ export default function ShoppingList() {
               ) : null}
             </div>
             <div className="total-line">
-              <span>Cheapest single store</span>
+              <span>Cheapest catalog store</span>
               <strong>{singleLabel}</strong>
             </div>
             <button
               type="button"
               className="btn primary"
               onClick={() => navigate("/list/optimize")}>
-              Find cheapest total
+              Compare stores
             </button>
           </>
         ) : (
@@ -127,6 +138,36 @@ export default function ShoppingList() {
           ))}
         </div>
       ) : null}
+      {list ? (
+        <form
+          className="form card"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!requestedItem.trim()) return;
+            state.addRequestedItem(list.id, requestedItem);
+            setRequestedItem("");
+          }}>
+          <label className="field">
+            <span>Add an item to compare at Kroger</span>
+            <input
+              value={requestedItem}
+              maxLength={120}
+              required
+              placeholder="e.g. 2% milk"
+              onChange={(event) =>
+                setRequestedItem(event.target.value)
+              }
+            />
+          </label>
+          <button className="btn primary" type="submit">
+            Add item
+          </button>
+          <p className="fine">
+            Use a general name to compare brands, or include a
+            brand and size for a specific product.
+          </p>
+        </form>
+      ) : null}
       {list?.shared_with?.length ? (
         <div className="avatar-row">
           {list.shared_with.map((person) => (
@@ -156,14 +197,24 @@ export default function ShoppingList() {
       {rows.length === 0 ? (
         <div className="empty">
           <h2>This list is empty</h2>
-          <p>Search for an item and add it to this list.</p>
+          <p>
+            Add an item above, or search for a product to add.
+          </p>
         </div>
       ) : (
         <div className="stack">
           {rows.map((item) => {
-            const product = state.catalog.products.find(
-              (entry) => entry.id === item.product_id
-            );
+            const product =
+              state.catalog.products.find(
+                (entry) => entry.id === item.product_id
+              ) ||
+              (item.query
+                ? {
+                    id: item.product_id,
+                    name: item.query,
+                    list_unit: "packages"
+                  }
+                : null);
             if (!product) return null;
             const total = linePrice(item);
             return (
@@ -181,20 +232,33 @@ export default function ShoppingList() {
                   onChange={() => state.toggleChecked(item.id)}
                 />
 
-                <img
-                  className="list-product-image"
-                  src={product.image_url}
-                  alt={product.name}
-                  loading="lazy"
-                  onError={(event) => {
-                    event.currentTarget.style.visibility = "hidden";
-                  }}
-                />
-                <div>
+                {product.image_url ? (
+                  <img
+                    className="list-product-image"
+                    src={product.image_url}
+                    alt={product.name}
+                    loading="lazy"
+                    onError={(event) => {
+                      event.currentTarget.style.visibility =
+                        "hidden";
+                    }}
+                  />
+                ) : (
+                  <span
+                    className="list-product-placeholder"
+                    aria-hidden="true">
+                    🛒
+                  </span>
+                )}
+                <div className="list-item-details">
                   <div className="name-line">
-                    <Link to={`/product/${product.id}`}>
+                    {item.query ? (
                       <strong>{product.name}</strong>
-                    </Link>
+                    ) : (
+                      <Link to={`/product/${product.id}`}>
+                        <strong>{product.name}</strong>
+                      </Link>
+                    )}
                     {state.justAddedProductId === product.id ? (
                       <span className="badge cheap">
                         Just added
@@ -240,16 +304,21 @@ export default function ShoppingList() {
                 <div className="price-col">
                   <strong>
                     {total == null
-                      ? "Unavailable"
+                      ? item.query
+                        ? "See matches below"
+                        : "Unavailable"
                       : money(total)}
                   </strong>
-                  <span>lowest</span>
+                  {!item.query ? (
+                    <span>lowest catalog price</span>
+                  ) : null}
                 </div>
               </div>
             );
           })}
         </div>
       )}
+      <KrogerRecommendations items={rows} />
       {editing && list ? (
         <button
           type="button"

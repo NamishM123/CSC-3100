@@ -4,6 +4,9 @@
   "buildCommand": "npm run build -w react-frontend",
   "outputDirectory": "packages/react-frontend/dist",
   "framework": "vite",
+  "functions": {
+    "api/kroger.js": { "maxDuration": 60 }
+  },
   "headers": [
     {
       "source": "/(.*)",
@@ -31,6 +34,10 @@
     }
   ],
   "rewrites": [
+    {
+      "source": "/api/kroger",
+      "destination": "/api/kroger"
+    },
     {
       "source": "/(.*)",
       "destination": "/index.html"

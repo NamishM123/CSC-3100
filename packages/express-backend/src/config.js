@@ -20,9 +20,13 @@ export function publicAuthConfig() {
     }
   }
   return validateAuthConfig(
-    process.env.SUPABASE_URL || frontend.VITE_SUPABASE_URL,
+    process.env.SUPABASE_URL ||
+      process.env.VITE_SUPABASE_URL ||
+      frontend.VITE_SUPABASE_URL,
     process.env.SUPABASE_PUBLISHABLE_KEY ||
       process.env.SUPABASE_ANON_KEY ||
+      process.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+      process.env.VITE_SUPABASE_ANON_KEY ||
       frontend.VITE_SUPABASE_PUBLISHABLE_KEY ||
       frontend.VITE_SUPABASE_ANON_KEY,
     { allowLocalHttp: process.env.NODE_ENV !== "production" }

@@ -1,6 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "vite",
+  "functions": {
+    "api/kroger.js": { "maxDuration": 60 }
+  },
   "installCommand": "cd ../.. && npm ci",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
@@ -31,6 +34,10 @@
     }
   ],
   "rewrites": [
+    {
+      "source": "/api/kroger",
+      "destination": "/api/kroger"
+    },
     {
       "source": "/(.*)",
       "destination": "/index.html"

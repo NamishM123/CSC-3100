@@ -16,7 +16,8 @@ The grocery comparison UI lives in `packages/react-frontend`. It
 is a mobile-first React app. On a wide screen the app sits in a
 centered phone-width column. Prices come from
 `packages/react-frontend/src/data/mock.js` unless Supabase env
-vars are set.
+vars are set. Kroger list recommendations use a separate live
+API connection configured on the server.
 
 ### Run it locally
 
@@ -28,6 +29,80 @@ npm run dev
 ```
 
 Open http://localhost:5173
+
+### Kroger list recommendations
+
+In **Lists**, create a list and use **Add an item to compare at
+Kroger**. General requests such as `2% milk` compare matching
+brands; include a size or brand to narrow the request. Existing
+catalog list items also participate, with their requested size.
+Under **Nearby Kroger recommendations**, each store has a
+product selector for every list item. Choose the brand and
+package size you want, or leave the cheapest confirmed match.
+Edit the list to remove items or change quantities; check off
+purchased items to exclude them. These changes and product
+selections recalculate prices and scores immediately. Lists,
+per-store choices, and price priority stay in this browser's
+account-scoped session storage.
+
+The default score uses 70% price and 30% distance. Adjust the
+slider to change those priorities. A store that covers the full
+list ranks ahead of partial baskets. The score is
+`100 × coverage × (priceWeight × priceScore + distanceWeight × distanceScore)`,
+rounded to an integer. Coverage counts list lines, price score
+is the cheapest comparable basket divided by this store's
+comparable basket, and distance score is `1 / (1 + miles)`. For
+score comparisons only, missing lines use the highest confirmed
+price for that line among returned stores; if no store has it,
+coverage still penalizes the missing line. The displayed total
+always contains only confirmed available items and is labeled
+partial when needed. Quantities multiply package prices;
+different package sizes aren't silently converted to equivalent
+quantities.
+
+The existing fuzzy matcher handles spelling differences and
+aliases while retaining explicit percentage, type, and size
+constraints. Ambiguous typos require a product selection.
+Unconfirmed stock, unavailable prices, and results at least five
+minutes old don't count toward coverage. An unavailable selected
+product stays unavailable until you choose another product or
+clear the selection. Use **Refresh prices** to check again.
+Search failures are shown separately from empty product results;
+sample catalog prices never fill gaps in Kroger results.
+
+The server uses
+[Kroger's public APIs](https://www.postman.com/kroger/the-kroger-co-s-public-workspace/collection/ki6utqb/kroger-public-apis)
+with store-specific product searches. Credentials belong in the
+Vercel project's environment variables:
+
+- `KROGER_CLIENT_ID`
+- `KROGER_CLIENT_SECRET`
+
+Use your team's existing credentials with `product.compact`
+access; don't put them in `VITE_*` variables or commit them. The
+API also verifies the signed-in Supabase session, using the
+existing `VITE_SUPABASE_URL` and public key settings (or their
+server-side `SUPABASE_*` equivalents). Redeploy after setting
+environment variables. Both repository-root and
+`packages/react-frontend` Vercel entry points are provided; when
+using the frontend as Root Directory, enable including source
+files outside that directory in Vercel's monorepo settings.
+`/api/kroger` is routed before the SPA fallback.
+
+No local credentials are required to build or run tests. To make
+live Kroger requests locally, set the two `KROGER_*` variables
+in `packages/express-backend/.env.local` and run
+`npm run dev:local`. Running only Vite cannot serve this API.
+Mocked integration tests cover the full API-to-ranking path;
+live verification requires the deployment's real credentials.
+
+Search checks the nearest five returned Kroger family stores
+within 1–100 straight-line miles of the selected coordinates
+(the ZIP center when using ZIP entry), for up to 20 distinct
+item requests. Each search retrieves up to 100 products per
+search phrase; limits and partial failures are visible. A
+two-minute server cache and bounded concurrency reduce API
+requests. Retailer prices and stock can change before checkout.
 
 For the app plus the local background notification server, use
 `npm run dev:local` instead. This starts both servers; leave
@@ -49,9 +124,10 @@ npm run dev -w express-backend
 ```
 
 `npm run build` builds the React app. `npm run lint` lints the
-frontend and the Express package. The Express server is local
-only. `GET /health` on port 8000 returns `{ "status": "ok" }`.
-The local server also serves the authenticated session and
+frontend and the Express package. Express runs locally; Vercel
+serves the production Kroger endpoint as a function.
+`GET /health` on port 8000 returns `{ "status": "ok" }`. The
+local server also serves the authenticated session and
 notification APIs; Vite proxies `/api` to it on port 8000.
 
 ### Local sale and price notifications — no Vercel required
@@ -157,12 +233,12 @@ live catalog reads are bounded to 5,000 rows per table per
 check.
 
 The built-in sample catalog uses its fixed demo clock. Alerts
-from those rows say **Demo**. No live retailer feed has been
-added: real alerts require an updating prototype `prices`
-catalog containing sale/stock metadata. The newer
-`price_results` schema does not supply that metadata and is not
-treated as a sale feed. New real offers are detected when your
-existing data source updates the catalog.
+from those rows say **Demo**. On-demand Kroger recommendations
+do not populate this notification feed. Real alerts require an
+updating prototype `prices` catalog containing sale/stock
+metadata. The newer `price_results` schema does not supply that
+metadata and is not treated as a sale feed. New real offers are
+detected when your existing data source updates the catalog.
 
 Recent delivered offers appear in Profile. Clearing history does
 not resend them. Browser mode deduplicates per account on this
