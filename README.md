@@ -869,16 +869,67 @@ Profile and select **Send test notification**. Confirm the
 browser's notification permission and OS settings if no banner
 appears.
 
+### Kroger product and price API
+
+Live store, product, and price data comes from the
+[Kroger API](https://developer.kroger.com). Because the Kroger
+client secret must never reach the browser, the integration is a
+small server layer the frontend calls same-origin at
+`/api/kroger/*`:
+
+- `api/_lib/kroger.js` — the only place the secret is used. It
+  requests an OAuth2 `client_credentials` token (cached in
+  memory), calls Kroger `/locations` and `/products`, and
+  normalizes the responses into the same `store_chains`,
+  `stores`, `products`, and `prices` shapes as
+  `src/data/mock.js`.
+- `api/kroger/catalog.js` and `api/kroger/locations.js` — Vercel
+  serverless functions (root `api/` folder, so they deploy when
+  the Vercel Root Directory is the repository root). They export
+  the shared handlers from `api/_lib/handlers.js`.
+- The same handlers are mounted on the Express backend
+  (`GET /api/kroger/catalog`, `GET /api/kroger/locations`) so
+  `npm run dev:local` serves them too (Vite proxies `/api` to
+  Express). `vercel dev` runs the serverless functions directly.
+
+On the client, `src/data/kroger.js` fetches `/api/kroger/catalog`
+and `AppState` merges the result into the catalog through
+`applyRemote` once a ZIP is known — the same path Supabase uses.
+Any failure (missing config → `503`, Kroger error, or network)
+resolves to `null`, so the demo/Supabase catalog stays intact.
+The catch-all SPA rewrite in `vercel.json` does not shadow these
+routes: Vercel matches serverless functions before rewrites.
+
+Add these environment variables in **Vercel → Project Settings →
+Environment Variables** (Production, Preview, and Development),
+then redeploy or run `vercel dev`:
+
+- `KROGER_CLIENT_ID`
+- `KROGER_CLIENT_SECRET`
+- `KROGER_BASE` — `https://api-ce.kroger.com/v1` for
+  Certification, or `https://api.kroger.com/v1` for Production
+
+For local `npm run dev:local`, put the same three in
+`packages/express-backend/.env.local` (see `.env.example`). With
+the variables unset, `/api/kroger/*` returns `503` and the app
+quietly falls back to the demo catalog.
+
+> If you instead set the Vercel Root Directory to
+> `packages/react-frontend`, Vercel will not deploy the root
+> `api/` folder. Either keep the Root Directory at the repository
+> root (the documented default), or move/duplicate the `api/`
+> folder under `packages/react-frontend/` for that setup.
+
 ### Express on Vercel later
 
-This deploy builds the React app only. The Express package keeps
-running locally with `app.listen` and should stay that way for
-class development.
+Apart from the Kroger routes above, this deploy builds the React
+app only. The rest of the Express package (notifications, auth
+session) keeps running locally with `app.listen` and should stay
+that way for class development.
 
-When we want the API on Vercel, add route files under
-`packages/react-frontend/api/` (or a root `api/` folder if the
-Vercel root stays the repository root). Each file should export
-a function instead of calling `app.listen`. Vercel serves those
-as serverless functions at `/api/...`. Move one Express route at
-a time, starting with `/health`, and keep the Express package
-working locally until the move is done.
+When we want more of the API on Vercel, add route files under the
+root `api/` folder (the same place the Kroger functions live).
+Each file should export a function instead of calling
+`app.listen`. Vercel serves those as serverless functions at
+`/api/...`. Move one Express route at a time and keep the Express
+package working locally until the move is done.

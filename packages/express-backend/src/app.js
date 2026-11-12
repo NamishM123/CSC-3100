@@ -1,5 +1,9 @@
 import express from "express";
 import { requireAuth } from "./auth.js";
+import {
+  catalogHandler,
+  locationsHandler
+} from "../../../api/_lib/handlers.js";
 
 export function createApp({ auth, notifications } = {}) {
   const app = express();
@@ -22,6 +26,11 @@ export function createApp({ auth, notifications } = {}) {
   });
   app.use(express.json({ limit: "16kb" }));
   app.get("/health", (_req, res) => res.json({ status: "ok" }));
+  // Kroger price/location proxy. The same handlers back the Vercel
+  // serverless functions in api/kroger/*, so dev:local and production
+  // behave identically. These are read-only and need no auth.
+  app.get("/api/kroger/locations", locationsHandler);
+  app.get("/api/kroger/catalog", catalogHandler);
   app.get("/api/session", requireAuth(auth), (req, res) =>
     res.json({ user: req.user })
   );

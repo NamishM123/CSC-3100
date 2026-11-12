@@ -1,5 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState
+} from "react";
 import { loadRemoteCatalog } from "../data/api.js";
+import { loadKrogerCatalog } from "../data/kroger.js";
 import NotificationState from "./NotificationState.jsx";
 import { useAuthSession } from "./useAuthSession.js";
 import {
@@ -100,6 +106,46 @@ function applyRemote(current, remote) {
   return { ...current, catalog };
 }
 
+const STAPLE_TERMS = [
+  "milk",
+  "eggs",
+  "bread",
+  "bananas",
+  "spinach"
+];
+
+// Search terms to ask Kroger about: the shopper's recent searches and the
+// names of products already on their active list, backfilled with staples
+// so a fresh account still sees real nearby prices. Capped at 8 so a
+// catalog refresh stays a bounded number of Kroger requests.
+function krogerTerms(state) {
+  const terms = [];
+  const seen = new Set();
+  const add = (value) => {
+    const clean = String(value || "")
+      .trim()
+      .toLowerCase();
+    if (clean && !seen.has(clean)) {
+      seen.add(clean);
+      terms.push(clean);
+    }
+  };
+  for (const term of state.recentSearches || []) add(term);
+  const productsById = new Map(
+    (state.catalog?.products || []).map((product) => [
+      product.id,
+      product
+    ])
+  );
+  for (const item of state.items || []) {
+    if (item.list_id !== state.activeListId) continue;
+    const product = productsById.get(item.product_id);
+    if (product) add(product.short_name || product.name);
+  }
+  for (const staple of STAPLE_TERMS) add(staple);
+  return terms.slice(0, 8);
+}
+
 export function AppStateProvider({ children }) {
   const auth = useAuthSession();
   return (
@@ -114,10 +160,28 @@ export function AppStateProvider({ children }) {
 function AccountStateProvider({ auth, children }) {
   const userId = auth.user?.id;
   const [state, setState] = useState(() => loadInitial(userId));
+  // Latest state for reads that should not re-trigger the Kroger effect
+  // (e.g. recent searches) on every keystroke.
+  const stateRef = useRef(state);
+  useEffect(() => {
+    stateRef.current = state;
+  });
+
   const refreshCatalog = useCallback(async () => {
-    const remote = await loadRemoteCatalog();
-    if (remote)
-      setState((current) => applyRemote(current, remote));
+    const current = stateRef.current;
+    const [supabase, kroger] = await Promise.all([
+      loadRemoteCatalog(),
+      loadKrogerCatalog(current.location?.zip, {
+        terms: krogerTerms(current),
+        radiusMi: current.radiusMi
+      })
+    ]);
+    setState((prev) => {
+      let next = prev;
+      if (supabase) next = applyRemote(next, supabase);
+      if (kroger) next = applyRemote(next, kroger);
+      return next;
+    });
   }, []);
 
   useEffect(() => {
@@ -138,6 +202,25 @@ function AccountStateProvider({ auth, children }) {
       cancelled = true;
     };
   }, [userId]);
+
+  // Pull real Kroger stores and prices once a ZIP is known, and again
+  // when the ZIP or search radius changes. No-ops (resolves null) when the
+  // Kroger API is not configured, leaving the demo/Supabase catalog intact.
+  const zip = state.location?.zip;
+  const radiusMi = state.radiusMi;
+  useEffect(() => {
+    if (!zip) return undefined;
+    const controller = new AbortController();
+    loadKrogerCatalog(zip, {
+      terms: krogerTerms(stateRef.current),
+      radiusMi,
+      signal: controller.signal
+    }).then((remote) => {
+      if (remote)
+        setState((current) => applyRemote(current, remote));
+    });
+    return () => controller.abort();
+  }, [zip, radiusMi, userId]);
 
   const api = {
     ...state,
