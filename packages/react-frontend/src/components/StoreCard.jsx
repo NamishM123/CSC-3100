@@ -1,7 +1,32 @@
 import { Link } from "react-router-dom";
 import { miles } from "../lib/format.js";
 
-export default function StoreCard({ store, variant, age, to }) {
+export default function StoreCard({
+  store,
+  variant,
+  age,
+  to,
+  onSelect
+}) {
+  if (store.source === "kroger") {
+    return (
+      <button
+        type="button"
+        className="card store-card"
+        onClick={onSelect}>
+        <div>
+          <strong>{store.name}</strong>
+          <p className="muted">{store.address}</p>
+          <p className="fine">
+            Kroger family store · Select to locate on map
+          </p>
+        </div>
+        <strong className="distance">
+          {miles(store.distance_mi)}
+        </strong>
+      </button>
+    );
+  }
   return (
     <Link className="card store-card" to={to}>
       <div>

@@ -7,6 +7,7 @@ import { DEMO_NOW } from "../data/mock.js";
 import { ageOld } from "../lib/format.js";
 import { nearbyStores } from "../lib/geo.js";
 import { useMapLocation } from "../hooks/useMapLocation.js";
+import { useKrogerLocations } from "../hooks/useKrogerLocations.js";
 import { useAppState } from "../state/useAppState.js";
 
 export default function Stores() {
@@ -15,9 +16,27 @@ export default function Stores() {
   const [selectedStoreId, setSelectedStoreId] = useState(null);
   const { place, loading, error, retry } =
     useMapLocation(location);
+  const kroger = useKrogerLocations(place, radiusMi);
   const stores = useMemo(
-    () => nearbyStores(catalog.stores, place, radiusMi),
-    [catalog.stores, place, radiusMi]
+    () =>
+      nearbyStores(
+        [
+          ...catalog.stores.map((store) => ({
+            ...store,
+            sample: catalog.storesAreDemo
+          })),
+          ...kroger.stores
+        ],
+        place,
+        radiusMi
+      ),
+    [
+      catalog.stores,
+      catalog.storesAreDemo,
+      kroger.stores,
+      place,
+      radiusMi
+    ]
   );
 
   function ageFor(storeId) {
@@ -51,6 +70,34 @@ export default function Stores() {
         <p className="fine store-data-note">
           Sample store locations are available in San Luis
           Obispo. The map follows your selected location.
+        </p>
+      ) : null}
+      {kroger.loading ? (
+        <p className="fine" role="status">
+          Finding nearby Kroger family stores...
+        </p>
+      ) : null}
+      {kroger.error ? (
+        <div className="card" role="alert">
+          <p>{kroger.error}</p>
+          <button
+            type="button"
+            className="text-link"
+            onClick={kroger.retry}>
+            Retry Kroger stores
+          </button>
+        </div>
+      ) : null}
+      {kroger.ready && kroger.stores.length === 0 ? (
+        <p className="fine" role="status">
+          No Kroger family stores were found within {radiusMi}{" "}
+          miles. Try a larger search radius in your profile.
+        </p>
+      ) : null}
+      {kroger.limitedStores ? (
+        <p className="fine">
+          Showing the nearest {kroger.maxStores} Kroger family
+          stores.
         </p>
       ) : null}
       <div
@@ -120,7 +167,6 @@ export default function Stores() {
               place={place}
               stores={stores}
               radiusMi={radiusMi}
-              sample={catalog.storesAreDemo}
               selectedStoreId={selectedStoreId}
               onSelectStore={setSelectedStoreId}
             />
@@ -141,10 +187,16 @@ export default function Stores() {
                   variant="distance"
                   age={ageFor(store.id)}
                   to={`/stores/${store.id}`}
+                  onSelect={() => {
+                    setSelectedStoreId(store.id);
+                    setMode("map");
+                  }}
                 />
               </div>
             ))}
-            {stores.length === 0 ? (
+            {stores.length === 0 &&
+            !kroger.loading &&
+            !kroger.error ? (
               <div className="card empty">
                 <h2>No stores in this area yet</h2>
                 <p className="muted">

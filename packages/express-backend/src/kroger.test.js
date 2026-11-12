@@ -71,6 +71,8 @@ test("validates coordinates, radius, item limits, and names before contacting Kr
     { ...body, location: { latitude: 91, longitude: 1 } },
     { ...body, radiusMi: 0 },
     { ...body, radiusMi: "5" },
+    { ...body, queries: undefined },
+    { ...body, queries: "milk" },
     { ...body, queries: [" "] },
     { ...body, queries: ["!!!"] },
     { ...body, queries: Array(21).fill("milk") },
@@ -176,6 +178,79 @@ test("nearby stores use real coordinates and searches are limited to the nearest
   assert.deepEqual(
     result.stores.map((store) => store.id),
     ["0", "1", "2", "3", "4"]
+  );
+});
+
+test("map discovery finds nearby live stores without a shopping list or product requests", async () => {
+  const { fetchImpl, calls } = fixture({
+    locations: [
+      {
+        ...location,
+        locationId: "far",
+        geolocation: { latitude: 0, longitude: 0 }
+      },
+      { ...location, locationId: "invalid", geolocation: {} },
+      location
+    ]
+  });
+  const result = await createKrogerClient({
+    env,
+    fetchImpl
+  }).compare({
+    ...body,
+    queries: []
+  });
+  assert.equal(result.stores.length, 1);
+  assert.deepEqual(result.stores[0], {
+    id: "123",
+    source: "kroger",
+    name: "Ralphs",
+    address: "1 Main St, SLO",
+    ...body.location,
+    distance_mi: 0,
+    results: []
+  });
+  const requests = calls.map(({ url }) => url.pathname);
+  assert.deepEqual(requests, [
+    "/v1/connect/oauth2/token",
+    "/v1/locations"
+  ]);
+  const search = calls[1].url.searchParams;
+  assert.equal(
+    search.get("filter.latLong.near"),
+    "35.28,-120.66"
+  );
+  assert.equal(search.get("filter.radiusInMiles"), "5");
+});
+
+test("map discovery reports no nearby stores and API failures without substituting samples", async () => {
+  const request = { ...body, queries: [] };
+  const empty = fixture({ locations: [] });
+  const result = await createKrogerClient({
+    env,
+    fetchImpl: empty.fetchImpl
+  }).compare(request);
+  assert.deepEqual(result.stores, []);
+  assert.equal(result.limitedStores, false);
+  const unavailable = fixture({
+    override: (url) =>
+      url.pathname.endsWith("/locations")
+        ? json({}, 503)
+        : undefined
+  });
+  await assert.rejects(
+    createKrogerClient({
+      env,
+      fetchImpl: unavailable.fetchImpl
+    }).compare(request),
+    { status: 502 }
+  );
+  await assert.rejects(
+    createKrogerClient({
+      env: {},
+      fetchImpl: () => assert.fail("Unexpected fetch")
+    }).compare(request),
+    { status: 503 }
   );
 });
 
