@@ -30,7 +30,6 @@ export function validateKrogerRequest(body) {
     );
   if (
     !Array.isArray(queries) ||
-    !queries.length ||
     queries.length > MAX_QUERIES ||
     queries.some(
       (query) =>
@@ -42,7 +41,7 @@ export function validateKrogerRequest(body) {
   )
     throw failure(
       400,
-      "Compare between 1 and 20 different items, with names up to 120 characters."
+      "Provide up to 20 different items, with names up to 120 characters. Use an empty list to find stores only."
     );
   return {
     location,
@@ -256,6 +255,7 @@ export function createKrogerClient({
       const nearby = data.data
         .map((row) => ({
           id: row.locationId,
+          source: "kroger",
           name: row.name || row.chain || "Kroger store",
           address: [
             row.address?.addressLine1,
@@ -347,13 +347,11 @@ export function createKrogerHandler(
     try {
       return res.json(await client.compare(req.body));
     } catch (error) {
-      return res
-        .status(error.status || 502)
-        .json({
-          error: error.status
-            ? error.message
-            : "Kroger search failed. Please retry."
-        });
+      return res.status(error.status || 502).json({
+        error: error.status
+          ? error.message
+          : "Kroger search failed. Please retry."
+      });
     }
   };
 }

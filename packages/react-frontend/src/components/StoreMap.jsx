@@ -8,16 +8,19 @@ import { miles } from "../lib/format.js";
 const TILE_URL =
   "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 
-function storePopup(store, sample, navigate) {
+function storePopup(store, navigate) {
   const content = document.createElement("div");
   content.className = "store-map-popup";
   const name = document.createElement("strong");
   name.textContent = store.name;
   content.append(name);
 
-  if (sample) {
+  if (store.sample || store.source === "kroger") {
     const label = document.createElement("p");
-    label.textContent = "Sample store location";
+    label.textContent =
+      store.source === "kroger"
+        ? "Kroger family store"
+        : "Sample store location";
     content.append(label);
   }
   const address = document.createElement("p");
@@ -29,8 +32,14 @@ function storePopup(store, sample, navigate) {
   distance.textContent = `${miles(store.distance_mi)} away | straight-line distance`;
   content.append(distance);
   const link = document.createElement("a");
-  link.href = `/stores/${encodeURIComponent(store.id)}`;
-  link.textContent = "View store";
+  link.href =
+    store.source === "kroger"
+      ? "/list"
+      : `/stores/${encodeURIComponent(store.id)}`;
+  link.textContent =
+    store.source === "kroger"
+      ? "Compare your list"
+      : "View store";
   link.addEventListener("click", (event) => {
     event.preventDefault();
     navigate(link.getAttribute("href"));
@@ -43,7 +52,6 @@ export default function StoreMap({
   place,
   stores,
   radiusMi,
-  sample = false,
   selectedStoreId,
   onSelectStore
 }) {
@@ -176,12 +184,12 @@ export default function StoreMap({
           zIndexOffset: isSelected ? 1000 : 0
         }
       )
-        .bindPopup(storePopup(store, sample, navigate))
+        .bindPopup(storePopup(store, navigate))
         .addTo(layer);
 
       marker.on("click", () => {
         onSelectStore?.(store.id);
-      })
+      });
       marker
         .getElement()
         ?.setAttribute("aria-label", store.name);
@@ -192,14 +200,13 @@ export default function StoreMap({
     radiusMi,
     locationLabel,
     stores,
-    sample,
     navigate,
     selectedStoreId,
     onSelectStore
   ]);
 
   useEffect(() => {
-    if (!selectedStoreId || ~mapRef.current) return;
+    if (!selectedStoreId || !mapRef.current) return;
     const selectedStore = stores.find(
       (store) => store.id === selectedStoreId
     );
@@ -210,14 +217,15 @@ export default function StoreMap({
 
     const map = mapRef.current;
 
-    map.flyTo([coordinates.latitude, coordinates.longitude],
+    map.flyTo(
+      [coordinates.latitude, coordinates.longitude],
       15,
       {
         animate: true,
         duration: 0.8
       }
     );
-  }, [selectedStoreId, stores])
+  }, [selectedStoreId, stores]);
 
   function pan(x, y) {
     mapRef.current?.panBy([x, y], { animate: true });

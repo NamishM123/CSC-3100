@@ -827,11 +827,21 @@ resolve a US ZIP code to an approximate area center. Failed
 lookups and denied GPS requests do not substitute a demo
 location.
 
-The store map and list filter the available catalog by the
-selected radius and calculate straight-line distances from the
-selected location. Built-in store pins remain sample data in San
-Luis Obispo; the real basemap does not provide live retailer
-discovery. OpenStreetMap attribution remains visible. Tiles
+The store map and list automatically request nearby Kroger family
+stores through the authenticated `/api/kroger` endpoint using the
+selected coordinates and radius. This location-only request uses
+`queries: []`, so no shopping list or product search is required.
+It shows up to the nearest five Kroger family stores and requires
+`KROGER_CLIENT_ID` and `KROGER_CLIENT_SECRET` on the server.
+Loading, API failures with retry, and no nearby Kroger locations
+are shown explicitly. Selecting a live store card locates its
+marker on the map; its popup links to list comparison.
+
+The map also filters catalog stores by the selected radius and
+calculates straight-line distances. Built-in store pins remain
+sample data in San Luis Obispo and are labeled separately from
+Kroger family stores in the popups. OpenStreetMap provides the
+basemap, not store discovery. Its attribution remains visible. Tiles
 require an internet connection and follow the
 [OpenStreetMap tile usage policy](https://operations.osmfoundation.org/policies/tiles/).
 
