@@ -191,5 +191,10 @@ test("both Vercel deployment roots enforce compatible browser security policies"
   assert.match(policy, /https:\/\/\*\.supabase\.co/);
   assert.match(policy, /https:\/\/api\.zippopotam\.us/);
   assert.match(policy, /https:\/\/tile\.openstreetmap\.org/);
+  // OSM rejects browser tile requests that omit the site's Referer.
+  assert.equal(
+    headers["Referrer-Policy"],
+    "strict-origin-when-cross-origin"
+  );
   assert.equal(headers["X-Frame-Options"], "DENY");
 });

@@ -74,6 +74,8 @@ export default function StoreMap({
     mapRef.current = map;
     const tiles = L.tileLayer(TILE_URL, {
       maxZoom: 19,
+      // OSM requires a Referer; send only the site origin.
+      referrerPolicy: "strict-origin-when-cross-origin",
       attribution:
         '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a>',
       updateWhenIdle: true,
