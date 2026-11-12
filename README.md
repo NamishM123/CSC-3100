@@ -768,9 +768,15 @@ does not reject existing shorter passwords at sign-in. See
 [bcrypt's byte limit](https://github.com/kelektiv/node.bcrypt.js#security-issues-and-concerns).
 
 Vercel responses enforce a Content Security Policy, HTTPS/HSTS,
-anti-framing, MIME sniffing prevention, a restrictive referrer
-policy, and disabled camera/microphone permissions. Inline
-styles remain allowed for React/Leaflet positioning; inline
+anti-framing, MIME sniffing prevention, the
+`strict-origin-when-cross-origin` referrer policy, and disabled
+camera/microphone permissions. Cross-origin HTTPS requests send
+only the site origin, keeping page paths and query strings
+private while allowing OpenStreetMap to identify map requests
+as required by its
+[tile usage policy](https://operations.osmfoundation.org/policies/tiles/).
+The map tile layer also sets this referrer policy explicitly.
+Inline styles remain allowed for React/Leaflet positioning; inline
 scripts and eval are blocked. The policy allows the standard
 Supabase project domains, ZIP lookup, and OpenStreetMap tiles.
 If using a custom Supabase domain, add its exact HTTPS/WSS
