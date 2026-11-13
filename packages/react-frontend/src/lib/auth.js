@@ -36,18 +36,33 @@ export function authRedirectUrl(origin, destination) {
   return url.href;
 }
 
-export async function resendConfirmationEmail(
+export async function createPasswordAccount(
   client,
-  { email, origin, destination }
+  readSettings,
+  { name, email, password }
 ) {
-  const { error } = await client.auth.resend({
-    type: "signup",
+  const validation = passwordValidationError(password);
+  if (validation) throw new Error(validation);
+  const settings = await readSettings();
+  // Do not create an email-confirmation account or trigger mail if the hosted
+  // project's configuration has not been updated yet.
+  if (settings.mailer_autoconfirm !== true) {
+    throw new Error(
+      "Account creation is temporarily unavailable. Please try again later."
+    );
+  }
+  const { data, error } = await client.auth.signUp({
     email: email.trim(),
-    options: {
-      emailRedirectTo: authRedirectUrl(origin, destination)
-    }
+    password,
+    options: { data: { name: name.trim() } }
   });
   if (error) throw error;
+  if (!data?.session) {
+    throw new Error(
+      "Unable to finish creating your account. Please try signing in."
+    );
+  }
+  return data;
 }
 
 export function authErrorMessage(error) {
@@ -63,7 +78,7 @@ export function authErrorMessage(error) {
     case "invalid_credentials":
       return "Email or password is incorrect.";
     case "email_not_confirmed":
-      return "Confirm your email before signing in.";
+      return "This account is not ready to sign in. Please contact support.";
     case "user_already_exists":
       return "An account already exists. Try signing in.";
     case "signup_disabled":

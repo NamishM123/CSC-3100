@@ -109,10 +109,10 @@ For the app plus the local background notification server, use
 that terminal open. Use Node.js 24 LTS (minimum 22.13 for the
 backend's built-in SQLite support).
 
-Create an account with your email and password, confirm the
-email if requested, then sign in. Authentication uses Supabase;
-there are no preset demo credentials. Then allow location, or
-enter ZIP `93405`.
+Create an account with your email and password. Signup signs
+you in immediately and offers optional authenticator setup;
+you can skip it. Authentication uses Supabase; there are no
+preset demo credentials. Then allow location, or enter ZIP `93405`.
 
 Other scripts:
 
@@ -291,26 +291,25 @@ Set `VITE_SUPABASE_URL` and either
 `VITE_SUPABASE_PUBLISHABLE_KEY` or `VITE_SUPABASE_ANON_KEY` in
 `packages/react-frontend/.env.local`. Restart Vite after
 changing these values. Email/password sign-in and signup use
-Supabase Auth. Signup stores the name as user metadata and waits
-for email confirmation when the project requires it. Successful
-email/password signup shows a **Verification email sent** popup
-with **Back to login** and **Resend verification email**
-actions. Resending has a 60-second cooldown and reports delivery
-errors. Returning to login preserves the email and requested app
-page. Google signup continues through its existing OAuth flow.
-Sessions persist across reloads; sign-out clears the current
-browser session.
+Supabase Auth. Signup stores the name as user metadata and
+receives an active session immediately, without a verification
+email. New password accounts open `/account-security`, where
+users can enable authenticator-app codes or choose **Skip for
+now**. This uses the same optional TOTP setup as Profile.
+Authenticator codes protect sign-in; they do not verify email
+ownership. Google signup continues through its existing OAuth
+flow. Sessions persist across reloads; sign-out clears the
+current browser session.
 
 In Supabase **Authentication > Sign In / Providers > Email**,
-keep **Confirm email** enabled. Supabase sends the verification
-email as part of `auth.signUp`; the app uses `auth.resend` only
-when the user requests another email. Configure a custom SMTP
-provider under Authentication email settings to deliver to
-addresses outside the project's team. Supabase's default mail
-service restricts recipients and rate-limits delivery. See
-[Supabase SMTP setup](https://supabase.com/docs/guides/auth/auth-smtp).
-Keep the confirmation email template's `{{ .ConfirmationURL }}`
-link so the address is verified before returning to the app.
+keep email/password login enabled and turn **Confirm email**
+**off**, then save. This hosted setting is required; deploying
+the code does not change it. The app checks Auth settings before
+password signup and stops if email confirmation is still on,
+so it does not trigger an unwanted verification email. No SMTP
+provider is needed for this signup flow. Email remains the login
+identifier. See
+[Supabase signup configuration](https://supabase.com/docs/reference/javascript/auth-signup).
 
 For Google login, enable Google in Supabase Authentication's
 provider settings and enter a Google OAuth web client ID and
@@ -318,9 +317,8 @@ secret. In Google Cloud, authorize the callback URL shown by
 Supabase: `https://<project-ref>.supabase.co/auth/v1/callback`.
 Under Supabase Authentication URL Configuration, allow
 `http://localhost:5173/**` for development and the deployed
-`/sign-in` callback URL for production. Both Google and
-confirmation emails return to `/sign-in`, which restores the
-requested app page. See
+`/sign-in` callback URL for production. Google returns to
+`/sign-in`, which restores the requested app page. See
 [Google provider setup](https://supabase.com/docs/guides/auth/social-login/auth-google)
 and
 [redirect configuration](https://supabase.com/docs/guides/auth/redirect-urls).
@@ -367,6 +365,9 @@ sequenceDiagram
 
     Shopper->>FE: Submit name, email, password
     FE->>FE: Validate name, email, password length / byte limit
+    FE->>Auth: Read public Auth settings
+    Auth-->>FE: mailer_autoconfirm must be true
+    Note over FE,Auth: If confirmation is enabled or settings cannot be read, stop before signup
     FE->>SDK: auth.signUp(email, password, name metadata)
     SDK->>Auth: POST /auth/v1/signup (credentials in HTTPS JSON body)
     Auth->>Auth: Enforce configured password policy and signup limits
@@ -380,20 +381,11 @@ sequenceDiagram
         Auth->>Auth: Hash password with bcrypt and a random salt
         Auth->>DB: Store account with password hash and name metadata
         DB-->>Auth: Account persisted (hash stays server-side)
-        alt Email confirmation required
-            Auth-->>Shopper: Send confirmation email
-            Auth-->>SDK: User with no active session
-            SDK-->>FE: data.session is null
-            FE-->>Shopper: Show verification-email popup; offer return to login and resend
-            Shopper->>Auth: Follow confirmation link
-            Auth->>DB: Mark email confirmed
-            Auth-->>FE: Redirect to /sign-in for callback / sign-in
-            Note over FE,Auth: SDK completes PKCE callback when a code is supplied
-        else Confirmation disabled and signup returns a session
-            Auth-->>SDK: User, signed access JWT, refresh token
-            SDK->>SDK: Persist session and emit Auth event
-            SDK-->>FE: Validate session before opening protected views
-        end
+        Auth-->>SDK: User, signed access JWT, refresh token (no email)
+        SDK->>SDK: Persist session and emit Auth event
+        SDK-->>FE: Validate session before opening protected views
+        FE-->>Shopper: Offer optional authenticator setup or skip
+        Shopper->>FE: Complete setup or skip; continue to requested page / location
     end
     Note over FE,DB: Password input is cleared after the attempt; app storage never contains passwords or hashes
 ```
@@ -402,7 +394,7 @@ Supabase owns credential persistence and hashing; `public.users`
 is a separate application table and has no password column. See
 [password storage](https://supabase.com/docs/guides/auth/password-security)
 and
-[signup and confirmation behavior](https://supabase.com/docs/reference/javascript/auth-signup).
+[signup behavior](https://supabase.com/docs/reference/javascript/auth-signup).
 
 #### Sign-in: verify password and finish enrolled 2FA
 
@@ -535,8 +527,8 @@ failures can still retain demo catalog rows; private API
 failures show errors instead.
 
 Validate TE6 with `npm test`, `npm run lint`, and
-`npm run build`, then use test accounts to check signup,
-confirmation, incorrect passwords, sign-in/reload, optional 2FA,
+`npm run build`, then use test accounts to check immediate signup,
+incorrect passwords, sign-in/reload, optional 2FA,
 and sign-out. The
 [API and database verification checklist](#5-verify-api-and-database-enforcement)
 covers unauthorized requests and isolation between accounts.
@@ -565,7 +557,7 @@ Supabase settings automatically.
    authenticator/TOTP enrollment and verification switches. See
    [Supabase MFA setup](https://supabase.com/docs/guides/auth/auth-mfa).
 3. In **Authentication → Sign In / Providers → Email**, keep
-   email/password login and email confirmation enabled. Set the
+   email/password login enabled and **Confirm email off**. Set the
    minimum password length to **15**, matching this app's signup
    rule. Enable leaked-password protection if your plan offers
    it. Password policy must be configured in Supabase as well:

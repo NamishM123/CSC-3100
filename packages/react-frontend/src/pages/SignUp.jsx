@@ -7,7 +7,6 @@ import {
 } from "react-router-dom";
 import Screen from "../components/Screen.jsx";
 import AuthLoading from "../components/AuthLoading.jsx";
-import EmailVerificationDialog from "../components/EmailVerificationDialog.jsx";
 import { useAppState } from "../state/useAppState.js";
 import { safeDest } from "../lib/format.js";
 import {
@@ -23,7 +22,6 @@ export default function SignUp() {
     authLoading,
     hasSession,
     signUp,
-    resendVerificationEmail,
     signInWithGoogle
   } = useAppState();
   const route = useLocation();
@@ -33,7 +31,6 @@ export default function SignUp() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [confirmation, setConfirmation] = useState("");
   const [pending, setPending] = useState("");
 
   if (authLoading) return <AuthLoading />;
@@ -74,15 +71,15 @@ export default function SignUp() {
     }
     setPending("password");
     try {
-      const data = await signUp({
+      await signUp({
         name,
         email,
-        password,
-        destination
+        password
       });
-      if (!data.session) {
-        setConfirmation(email.trim());
-      }
+      navigate("/account-security", {
+        replace: true,
+        state: { from: destination }
+      });
     } catch (error) {
       setError(authErrorMessage(error));
     } finally {
@@ -103,13 +100,6 @@ export default function SignUp() {
     }
   }
 
-  function backToLogin() {
-    navigate("/sign-in", {
-      replace: true,
-      state: { from: destination, email: confirmation }
-    });
-  }
-
   return (
     <Screen title="Create account" chrome={false}>
       <div className="auth">
@@ -121,110 +111,87 @@ export default function SignUp() {
           </p>
         </div>
         <div className="auth-panel">
-          {confirmation ? (
-            <>
-              <p className="lede" role="status">
-                Check your inbox to verify your email before
-                signing in.
-              </p>
-              <EmailVerificationDialog
-                email={confirmation}
-                onBackToLogin={backToLogin}
-                onResend={() =>
-                  resendVerificationEmail({
-                    email: confirmation,
-                    destination
-                  })
-                }
-              />
-            </>
-          ) : (
-            <form className="form" onSubmit={onSubmit}>
-              <label className="field">
-                <span>Name</span>
-                <input
-                  name="name"
-                  autoComplete="name"
-                  required
-                  disabled={Boolean(pending)}
-                  value={name}
-                  onChange={(event) => {
-                    setName(event.target.value);
-                    setError("");
-                  }}
-                />
-              </label>
-              <label className="field">
-                <span>Email</span>
-                <input
-                  type="email"
-                  name="email"
-                  autoComplete="username"
-                  required
-                  disabled={Boolean(pending)}
-                  value={email}
-                  onChange={(event) => {
-                    setEmail(event.target.value);
-                    setError("");
-                  }}
-                />
-              </label>
-              <label className="field">
-                <span>Password</span>
-                <input
-                  type="password"
-                  name="password"
-                  autoComplete="new-password"
-                  required
-                  minLength={MIN_PASSWORD_LENGTH}
-                  maxLength={72}
-                  placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
-                  disabled={Boolean(pending)}
-                  value={password}
-                  onChange={(event) => {
-                    setPassword(event.target.value);
-                    setError("");
-                  }}
-                />
-              </label>
-              <button
-                className="btn primary"
-                type="submit"
+          <form className="form" onSubmit={onSubmit}>
+            <label className="field">
+              <span>Name</span>
+              <input
+                name="name"
+                autoComplete="name"
+                required
                 disabled={Boolean(pending)}
-                aria-busy={pending === "password"}>
-                {pending === "password"
-                  ? "Creating account..."
-                  : "Create account"}
-              </button>
-            </form>
-          )}
+                value={name}
+                onChange={(event) => {
+                  setName(event.target.value);
+                  setError("");
+                }}
+              />
+            </label>
+            <label className="field">
+              <span>Email</span>
+              <input
+                type="email"
+                name="email"
+                autoComplete="username"
+                required
+                disabled={Boolean(pending)}
+                value={email}
+                onChange={(event) => {
+                  setEmail(event.target.value);
+                  setError("");
+                }}
+              />
+            </label>
+            <label className="field">
+              <span>Password</span>
+              <input
+                type="password"
+                name="password"
+                autoComplete="new-password"
+                required
+                minLength={MIN_PASSWORD_LENGTH}
+                maxLength={72}
+                placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
+                disabled={Boolean(pending)}
+                value={password}
+                onChange={(event) => {
+                  setPassword(event.target.value);
+                  setError("");
+                }}
+              />
+            </label>
+            <button
+              className="btn primary"
+              type="submit"
+              disabled={Boolean(pending)}
+              aria-busy={pending === "password"}>
+              {pending === "password"
+                ? "Creating account..."
+                : "Create account"}
+            </button>
+          </form>
           {error ? (
             <p className="error" role="alert">
               {error}
             </p>
           ) : null}
-          {!confirmation ? (
-            <div className="actions">
-              <button
-                className="btn ghost"
-                type="button"
-                disabled={Boolean(pending)}
-                aria-busy={pending === "google"}
-                onClick={onGoogleSignIn}>
-                {pending === "google"
-                  ? "Connecting to Google..."
-                  : "Continue with Google"}
-              </button>
-            </div>
-          ) : null}
+          <div className="actions">
+            <button
+              className="btn ghost"
+              type="button"
+              disabled={Boolean(pending)}
+              aria-busy={pending === "google"}
+              onClick={onGoogleSignIn}>
+              {pending === "google"
+                ? "Connecting to Google..."
+                : "Continue with Google"}
+            </button>
+          </div>
           <p className="center">
             <Link
               className="text-link"
               to="/sign-in"
               state={{ from: destination }}>
-              {confirmation
-                ? "Back to login"
-                : "Already have an account? Sign in"}
+              Already have an account? Sign in
             </Link>
           </p>
         </div>

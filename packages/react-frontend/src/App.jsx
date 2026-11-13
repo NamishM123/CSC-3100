@@ -9,6 +9,7 @@ import {
 import PhoneShell from "./components/PhoneShell.jsx";
 import AuthLoading from "./components/AuthLoading.jsx";
 import Home from "./pages/Home.jsx";
+import AccountSecurity from "./pages/AccountSecurity.jsx";
 import { AllowLocation, EnterZip } from "./pages/Location.jsx";
 import Missing from "./pages/Missing.jsx";
 import Optimized from "./pages/Optimized.jsx";
@@ -62,6 +63,10 @@ function AppRoutes() {
         <Route path="/sign-in" element={<SignIn />} />
         <Route path="/sign-up" element={<SignUp />} />
         <Route element={<RequireAuth />}>
+          <Route
+            path="/account-security"
+            element={<AccountSecurity />}
+          />
           <Route path="/location" element={<AllowLocation />} />
           <Route path="/location/zip" element={<EnterZip />} />
           <Route element={<RequirePlace />}>
