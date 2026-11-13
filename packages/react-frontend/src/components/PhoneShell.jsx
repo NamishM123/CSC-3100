@@ -50,34 +50,42 @@ function isPublic(pathname) {
   );
 }
 
-function StatusBar() {
+function NavigationIcon({ name }) {
   return (
-    <div className="status" aria-hidden="true">
-      <span>9:41</span>
-      <span className="status-right">
-        LTE
-        <svg width="22" height="12" viewBox="0 0 22 12">
-          <rect
-            x="0.6"
-            y="0.6"
-            width="18"
-            height="10.8"
-            rx="2"
-            fill="none"
-            stroke="currentColor"
-          />
-          <rect x="2" y="2" width="15" height="8" rx="1" />
-          <rect
-            x="19.5"
-            y="3.5"
-            width="1.8"
-            height="5"
-            rx="0.6"
-          />
-        </svg>
-        100%
-      </span>
-    </div>
+    <svg
+      className="nav-icon"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false">
+      {name === "home" ? (
+        <>
+          <path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z" />
+          <path d="M9 21v-8h6v8" />
+        </>
+      ) : name === "list" ? (
+        <>
+          <rect x="5" y="4" width="15" height="17" rx="2" />
+          <path d="M9 3h7v3H9zM8 11l1 1 2-2m3 1h3M8 16l1 1 2-2m3 1h3" />
+        </>
+      ) : name === "stores" ? (
+        <>
+          <path d="M4 10v11h16V10M3 10l2-7h14l2 7" />
+          <path d="M3 10a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0M9 21v-7h6v7" />
+        </>
+      ) : (
+        <>
+          <circle cx="12" cy="7" r="4" />
+          <path d="M4 21v-2a8 8 0 0 1 16 0v2Z" />
+        </>
+      )}
+    </svg>
   );
 }
 
@@ -103,6 +111,7 @@ function DesktopNav({ pathname }) {
               aria-current={
                 tab.id === active ? "page" : undefined
               }>
+              <NavigationIcon name={tab.id} />
               {tab.label}
             </Link>
           ))}
@@ -121,7 +130,7 @@ function TabBar({ active }) {
           to={tab.to}
           className={tab.id === active ? "tab active" : "tab"}
           aria-current={tab.id === active ? "page" : undefined}>
-          <span className="tab-icon" />
+          <NavigationIcon name={tab.id} />
           {tab.label}
         </Link>
       ))}
@@ -146,7 +155,6 @@ export default function PhoneShell() {
           {isPublic(pathname) ? null : (
             <DesktopNav pathname={pathname} />
           )}
-          <StatusBar />
           <div className="phone-body">
             <Outlet />
           </div>
