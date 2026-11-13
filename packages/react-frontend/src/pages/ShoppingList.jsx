@@ -66,11 +66,7 @@ export default function ShoppingList() {
         ) : rows.length ? (
           <>
             <div className="desktop-only summary-panel">
-              <p className="summary-kicker">
-                {state.catalog.pricesAreDemo
-                  ? "Sample catalog total"
-                  : "Catalog total"}
-              </p>
+              <p className="summary-kicker">Catalog total</p>
               <div className="summary-figure">
                 <span>
                   {plan.stops.length

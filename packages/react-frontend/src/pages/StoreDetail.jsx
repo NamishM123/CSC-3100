@@ -1,6 +1,11 @@
 import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import {
+  Link,
+  useParams,
+  useSearchParams
+} from "react-router-dom";
 import Screen from "../components/Screen.jsx";
+import KrogerStoreDetail from "../components/KrogerStoreDetail.jsx";
 import { priceClock } from "../lib/catalog.js";
 import { ageLabel, miles, money } from "../lib/format.js";
 import { productMatchesQuery } from "../lib/search.js";
@@ -8,11 +13,18 @@ import { useAppState } from "../state/useAppState.js";
 
 export default function StoreDetail() {
   const { storeId } = useParams();
+  const [params] = useSearchParams();
   const { catalog } = useAppState();
   const [query, setQuery] = useState("");
   const store = catalog.stores.find(
     (entry) => entry.id === storeId
   );
+
+  if (params.get("source") === "kroger") {
+    return (
+      <KrogerStoreDetail key={storeId} storeId={storeId} />
+    );
+  }
 
   if (!store) {
     return (
@@ -84,9 +96,6 @@ export default function StoreDetail() {
             to={`/product/${row.product.id}`}>
             <div>
               <strong>{row.product.name}</strong>
-              {row.source === "demo" ? (
-                <span className="badge">Sample</span>
-              ) : null}
               <p className="muted">
                 {row.in_stock ? "In stock" : "Out of stock"} |
                 updated{" "}

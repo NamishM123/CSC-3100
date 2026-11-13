@@ -17,6 +17,7 @@ export function validateKrogerRequest(body) {
   const location = coordinatesOf(body?.location);
   const radiusMi = body?.radiusMi;
   const queries = body?.queries;
+  const storeId = body?.storeId;
   if (
     !location ||
     typeof radiusMi !== "number" ||
@@ -43,9 +44,15 @@ export function validateKrogerRequest(body) {
       400,
       "Provide up to 20 different items, with names up to 120 characters. Use an empty list to find stores only."
     );
+  if (
+    storeId !== undefined &&
+    (typeof storeId !== "string" || !/^\d{1,20}$/.test(storeId))
+  )
+    throw failure(400, "Provide a valid Kroger store ID.");
   return {
     location,
     radiusMi,
+    storeId,
     queries: [...new Set(queries.map((query) => query.trim()))]
   };
 }
@@ -263,7 +270,7 @@ export function createKrogerClient({
   }
 
   async function compare(body) {
-    const { location, radiusMi, queries } =
+    const { location, radiusMi, queries, storeId } =
       validateKrogerRequest(body);
     const deadline = AbortSignal.timeout(45000);
     try {
@@ -305,7 +312,9 @@ export function createKrogerClient({
             a.distance_mi - b.distance_mi ||
             a.id.localeCompare(b.id)
         );
-      const stores = nearby.slice(0, MAX_STORES);
+      const stores = storeId
+        ? nearby.filter((store) => store.id === storeId)
+        : nearby.slice(0, MAX_STORES);
       const jobs = stores.flatMap((store) =>
         queries.map((query) => ({ store, query }))
       );
@@ -342,8 +351,9 @@ export function createKrogerClient({
       return {
         stores,
         limitedStores:
-          nearby.length > MAX_STORES ||
-          data.data.length === 200,
+          !storeId &&
+          (nearby.length > MAX_STORES ||
+            data.data.length === 200),
         maxStores: MAX_STORES
       };
     } catch (error) {

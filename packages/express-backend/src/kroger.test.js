@@ -122,6 +122,88 @@ test("validates coordinates, radius, item limits, and names before contacting Kr
   );
 });
 
+test("validates an optional selected store ID before contacting Kroger", async () => {
+  for (const storeId of [
+    null,
+    123,
+    "",
+    "../123",
+    "x",
+    "1".repeat(21)
+  ]) {
+    await assert.rejects(
+      createKrogerClient({
+        env,
+        fetchImpl: () => assert.fail("Unexpected fetch")
+      }).compare({ ...body, storeId }),
+      { status: 400 }
+    );
+  }
+  assert.equal(
+    validateKrogerRequest({ ...body, storeId: "123" }).storeId,
+    "123"
+  );
+});
+
+test("store item browsing searches only the selected location, including beyond the nearest five", async () => {
+  const locations = Array.from({ length: 8 }, (_, index) => ({
+    ...location,
+    locationId: String(index),
+    geolocation: {
+      ...body.location,
+      latitude: body.location.latitude + index * 0.001
+    }
+  }));
+  const { fetchImpl, calls } = fixture({ locations });
+  const result = await createKrogerClient({
+    env,
+    fetchImpl
+  }).compare({
+    ...body,
+    storeId: "7"
+  });
+  assert.deepEqual(
+    result.stores.map((store) => store.id),
+    ["7"]
+  );
+  assert.equal(result.limitedStores, false);
+  const productCalls = calls.filter(({ url }) =>
+    url.pathname.endsWith("/products")
+  );
+  assert.ok(productCalls.length > 0);
+  assert.ok(
+    productCalls.every(
+      ({ url }) =>
+        url.searchParams.get("filter.locationId") === "7"
+    )
+  );
+});
+
+test("unavailable or out-of-radius selected stores never substitute other stores' inventory", async () => {
+  for (const storeId of ["999", "456"]) {
+    const { fetchImpl, calls } = fixture({
+      locations: [
+        location,
+        {
+          ...location,
+          locationId: "456",
+          geolocation: { latitude: 0, longitude: 0 }
+        }
+      ]
+    });
+    const result = await createKrogerClient({
+      env,
+      fetchImpl
+    }).compare({ ...body, storeId });
+    assert.deepEqual(result.stores, []);
+    assert.ok(
+      !calls.some(({ url }) =>
+        url.pathname.endsWith("/products")
+      )
+    );
+  }
+});
+
 test("normalizes all SKU variants, promotional prices, and explicit unknown stock", () => {
   const p = rawProduct();
   p.items.push({

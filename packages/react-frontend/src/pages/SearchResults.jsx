@@ -239,8 +239,8 @@ export default function SearchResults() {
       <section className="stack">
         <h2>Catalog products</h2>
         <p className="fine">
-          Built-in offers are sample prices assigned to sample
-          stores. Live Kroger prices appear separately below.
+          Built-in catalog offers appear here. Live Kroger
+          prices appear separately below.
         </p>
         <div className="stack cards-grid">
           {matches.map((product) => {

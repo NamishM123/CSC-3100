@@ -7,6 +7,7 @@ import {
 } from "../lib/recommendations.js";
 import { miles, money } from "../lib/format.js";
 import { useAppState } from "../state/useAppState.js";
+import ScoreRing from "./ScoreRing.jsx";
 
 export default function KrogerRecommendations({ items }) {
   const state = useAppState();
@@ -157,7 +158,7 @@ export default function KrogerRecommendations({ items }) {
                 {row.store.address}
               </p>
             </div>
-            <strong>{row.score}/100</strong>
+            <ScoreRing score={row.score} />
           </div>
           {index === 0 && row.complete ? (
             <span className="badge cheap">
@@ -254,7 +255,7 @@ export default function KrogerRecommendations({ items }) {
       ))}
       {current ? (
         <p className="fine">
-          Kroger results are separate from the sample catalog.
+          Kroger results are separate from the built-in catalog.
           Stock and prices can change before checkout. Prices
           refresh automatically when you return and every four
           minutes.

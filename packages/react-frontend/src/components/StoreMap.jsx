@@ -4,6 +4,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { coordinatesOf } from "../lib/geo.js";
 import { miles } from "../lib/format.js";
+import { storeItemsPath } from "../lib/storeLinks.js";
 
 const TILE_URL =
   "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
@@ -15,12 +16,9 @@ function storePopup(store, navigate) {
   name.textContent = store.name;
   content.append(name);
 
-  if (store.sample || store.source === "kroger") {
+  if (store.source === "kroger") {
     const label = document.createElement("p");
-    label.textContent =
-      store.source === "kroger"
-        ? "Kroger family store"
-        : "Sample store location";
+    label.textContent = "Kroger family store";
     content.append(label);
   }
   const address = document.createElement("p");
@@ -32,17 +30,11 @@ function storePopup(store, navigate) {
   distance.textContent = `${miles(store.distance_mi)} away | straight-line distance`;
   content.append(distance);
   const link = document.createElement("a");
-  link.href =
-    store.source === "kroger"
-      ? "/list"
-      : `/stores/${encodeURIComponent(store.id)}`;
-  link.textContent =
-    store.source === "kroger"
-      ? "Compare your list"
-      : "View store";
+  link.href = storeItemsPath(store);
+  link.textContent = "View store items";
   link.addEventListener("click", (event) => {
     event.preventDefault();
-    navigate(link.getAttribute("href"));
+    navigate(link.getAttribute("href"), { state: { store } });
   });
   content.append(link);
   return content;
@@ -53,6 +45,7 @@ export default function StoreMap({
   stores,
   radiusMi,
   selectedStoreId,
+  focusRequest,
   onSelectStore
 }) {
   const container = useRef(null);
@@ -193,6 +186,7 @@ export default function StoreMap({
       marker
         .getElement()
         ?.setAttribute("aria-label", store.name);
+      if (isSelected) marker.openPopup();
     }
   }, [
     latitude,
@@ -216,16 +210,22 @@ export default function StoreMap({
     if (!coordinates) return;
 
     const map = mapRef.current;
+    container.current?.closest("section")?.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest"
+    });
 
     map.flyTo(
       [coordinates.latitude, coordinates.longitude],
       15,
       {
-        animate: true,
+        animate: !window.matchMedia(
+          "(prefers-reduced-motion: reduce)"
+        ).matches,
         duration: 0.8
       }
     );
-  }, [selectedStoreId, stores]);
+  }, [selectedStoreId, stores, focusRequest]);
 
   function pan(x, y) {
     mapRef.current?.panBy([x, y], { animate: true });

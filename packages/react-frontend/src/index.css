@@ -1928,6 +1928,33 @@ button:disabled {
   background: #f1f8f2;
 }
 
+.store-card-details {
+  min-width: 0;
+}
+
+.store-name {
+  display: inline-block;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 800;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.store-name:hover {
+  color: #2e7d32;
+  text-decoration: underline;
+}
+
+.store-items-link {
+  display: inline-block;
+  margin-top: 8px;
+}
+
 /* Selected map marker */
 .store-map-pin.selected {
   background: #2e7d32;
@@ -1950,6 +1977,84 @@ button:disabled {
   justify-content: space-between;
   align-items: start;
   gap: 1rem;
+}
+
+.kroger-store-heading > :first-child {
+  min-width: 0;
+}
+
+.score-ring {
+  --score-color: #a53c32;
+  flex: none;
+  width: 88px;
+  text-align: center;
+  color: var(--score-color);
+}
+
+.score-ring.excellent {
+  --score-color: #2e7d32;
+}
+
+.score-ring.good {
+  --score-color: #37765b;
+}
+
+.score-ring.fair {
+  --score-color: #8a6300;
+}
+
+.score-ring-dial {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  margin-inline: auto;
+}
+
+.score-ring svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.score-ring circle {
+  fill: none;
+  stroke-width: 6;
+}
+
+.score-ring-track {
+  stroke: #e6eae5;
+}
+
+.score-ring-progress {
+  stroke: var(--score-color);
+}
+
+.score-ring-value {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.score-ring-value strong {
+  font-size: 24px;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.score-ring-value > span {
+  font-size: 11px;
+  color: #626962;
+}
+
+.score-ring-label {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .kroger-product-choice {
