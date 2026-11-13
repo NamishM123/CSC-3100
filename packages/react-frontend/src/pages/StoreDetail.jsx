@@ -7,6 +7,7 @@ import {
 import Screen from "../components/Screen.jsx";
 import KrogerStoreDetail from "../components/KrogerStoreDetail.jsx";
 import CommunityStoreDetail from "../components/CommunityStoreDetail.jsx";
+import WeeklyAdDetail from "../components/WeeklyAdDetail.jsx";
 import DietaryNotice from "../components/DietaryNotice.jsx";
 import { priceClock } from "../lib/catalog.js";
 import { ageLabel, miles, money } from "../lib/format.js";
@@ -31,6 +32,8 @@ export default function StoreDetail() {
       <KrogerStoreDetail key={storeId} storeId={storeId} />
     );
   }
+  if (params.get("source") === "weekly-ads")
+    return <WeeklyAdDetail key={storeId} provider={storeId} />;
   if (params.get("source") === "openstreetmap")
     return (
       <CommunityStoreDetail key={storeId} storeId={storeId} />

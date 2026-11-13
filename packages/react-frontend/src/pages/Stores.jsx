@@ -11,6 +11,7 @@ import { useMapLocation } from "../hooks/useMapLocation.js";
 import { useKrogerLocations } from "../hooks/useKrogerLocations.js";
 import { useAppState } from "../state/useAppState.js";
 import { storeItemsPath } from "../lib/storeLinks.js";
+import { weeklyAdSources } from "../lib/weeklyAdSources.js";
 
 export default function Stores() {
   const { catalog, location, radiusMi } = useAppState();
@@ -257,6 +258,28 @@ export default function Stores() {
           </div>
         </div>
       ) : null}
+      <section
+        className="stack"
+        aria-label="Central Coast weekly ads">
+        <h2>Central Coast weekly ads</h2>
+        <p className="muted">
+          Browse advertised deals from these regional grocers.
+          Locations listed here are independent of your map
+          radius; confirm the participating branch.
+        </p>
+        <div className="stack cards-grid">
+          {weeklyAdSources.map((source) => (
+            <article key={source.id} className="card">
+              <Link
+                className="text-link"
+                to={`/stores/${source.id}?source=weekly-ads`}>
+                {source.name}
+              </Link>
+              <p className="fine">{source.area}</p>
+            </article>
+          ))}
+        </div>
+      </section>
     </Screen>
   );
 }

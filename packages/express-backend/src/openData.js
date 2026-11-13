@@ -2,6 +2,7 @@ import {
   coordinatesOf,
   distanceMiles
 } from "../../react-frontend/src/lib/geo.js";
+import { weeklyAdClient } from "./weeklyAds.js";
 
 const OVERPASS =
   "https://overpass.private.coffee/api/interpreter";
@@ -467,7 +468,10 @@ export function createOpenDataClient({
 
 export const openDataClient = createOpenDataClient();
 
-export function createOpenDataHandler(client = openDataClient) {
+export function createOpenDataHandler(
+  client = openDataClient,
+  ads = weeklyAdClient
+) {
   return async (req, res) => {
     res.setHeader("Cache-Control", "no-store");
     if (req.method !== "POST") {
@@ -478,6 +482,8 @@ export function createOpenDataHandler(client = openDataClient) {
     }
     try {
       const body = req.body;
+      if (body?.action === "weeklyAds")
+        return res.json(await ads.collect(body.provider));
       if (body?.action === "stores")
         return res.json(await client.stores(body));
       if (body?.action === "inventory") {

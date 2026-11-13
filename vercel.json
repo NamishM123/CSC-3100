@@ -6,7 +6,10 @@
   "framework": "vite",
   "functions": {
     "api/kroger.js": { "maxDuration": 60 },
-    "api/open-data.js": { "maxDuration": 60 }
+    "api/open-data.js": {
+      "maxDuration": 60,
+      "includeFiles": "{packages/express-backend/src/weeklyAdPdf*.js,node_modules/pdfjs-dist/legacy/build/**}"
+    }
   },
   "headers": [
     {
