@@ -1,12 +1,8 @@
 import { useState } from "react";
-import {
-  Link,
-  Navigate,
-  useLocation,
-  useNavigate
-} from "react-router-dom";
+import { Link, Navigate, useLocation } from "react-router-dom";
 import Screen from "../components/Screen.jsx";
 import AuthLoading from "../components/AuthLoading.jsx";
+import ResendVerification from "../components/ResendVerification.jsx";
 import { useAppState } from "../state/useAppState.js";
 import { safeDest } from "../lib/format.js";
 import {
@@ -25,13 +21,14 @@ export default function SignUp() {
     signInWithGoogle
   } = useAppState();
   const route = useLocation();
-  const navigate = useNavigate();
   const destination = safeDest(route.state?.from);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [pending, setPending] = useState("");
+  const [confirmationEmail, setConfirmationEmail] =
+    useState("");
 
   if (authLoading) return <AuthLoading />;
   if (hasSession && !user)
@@ -71,15 +68,8 @@ export default function SignUp() {
     }
     setPending("password");
     try {
-      await signUp({
-        name,
-        email,
-        password
-      });
-      navigate("/account-security", {
-        replace: true,
-        state: { from: destination }
-      });
+      await signUp({ name, email, password }, destination);
+      setConfirmationEmail(email.trim());
     } catch (error) {
       setError(authErrorMessage(error));
     } finally {
@@ -100,6 +90,52 @@ export default function SignUp() {
     }
   }
 
+  if (confirmationEmail) {
+    return (
+      <Screen title="Verify your email" chrome={false}>
+        <div className="auth">
+          <div className="auth-brand">
+            <div className="logo-mark" aria-hidden="true" />
+            <h1>Check your email</h1>
+            <p className="lede">
+              Confirm your email to finish creating your
+              account.
+            </p>
+          </div>
+          <div className="auth-panel stack">
+            <p role="status">
+              Check <strong>{confirmationEmail}</strong> for a
+              verification link. Open it to confirm your email,
+              then return here to sign in.
+            </p>
+            <p className="fine">
+              Check your spam folder if you don&apos;t see it.
+            </p>
+            <ResendVerification
+              email={confirmationEmail}
+              destination={destination}
+            />
+            <Link
+              className="btn primary"
+              to="/sign-in"
+              state={{
+                from: destination,
+                email: confirmationEmail
+              }}>
+              Back to sign in
+            </Link>
+            <button
+              className="text-link"
+              type="button"
+              onClick={() => setConfirmationEmail("")}>
+              Use a different email
+            </button>
+          </div>
+        </div>
+      </Screen>
+    );
+  }
+
   return (
     <Screen title="Create account" chrome={false}>
       <div className="auth">
@@ -108,6 +144,7 @@ export default function SignUp() {
           <h1>Create an account</h1>
           <p className="lede">
             Save lists and come back to the same searches.
+            We&apos;ll email you a link to verify your address.
           </p>
         </div>
         <div className="auth-panel">

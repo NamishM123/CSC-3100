@@ -7,7 +7,9 @@ import {
   authErrorMessage,
   authRedirectUrl,
   passwordValidationError,
-  createPasswordAccount
+  createPasswordAccount,
+  resendVerificationEmail,
+  signupRedirectUrl
 } from "./auth.js";
 import { safeDest } from "./format.js";
 
@@ -35,7 +37,18 @@ test("auth redirects retain internal destinations and reject external URLs", () 
       authRedirectUrl("https://pantry.example", value),
       "https://pantry.example/sign-in"
     );
+    assert.equal(
+      signupRedirectUrl("https://pantry.example", value),
+      "https://pantry.example/sign-in?signup=confirmed"
+    );
   }
+  assert.equal(
+    signupRedirectUrl(
+      "https://pantry.example",
+      "/list?sort=price"
+    ),
+    "https://pantry.example/sign-in?next=%2Flist%3Fsort%3Dprice&signup=confirmed"
+  );
 });
 
 test("signup accepts long passphrases while respecting bcrypt's byte limit", () => {
@@ -86,7 +99,7 @@ test("authenticated profiles use Supabase identity and provider metadata", () =>
 test("legacy account and OAuth failures produce actionable errors", () => {
   assert.match(
     authErrorMessage({ code: "email_not_confirmed" }),
-    /contact support/
+    /Verify your email before signing in/
   );
   assert.match(
     authCallbackError("?error_code=otp_expired", ""),
@@ -117,43 +130,57 @@ function authClient(fetch) {
 const signupDetails = {
   name: " Shopper ",
   email: " shopper@example.com ",
-  password: "a long unique passphrase"
+  password: "a long unique passphrase",
+  emailRedirectTo: signupRedirectUrl(
+    "https://pantry.example",
+    "/list"
+  )
 };
-const passwordOnlySettings = async () => ({
-  mailer_autoconfirm: true
+const confirmationSettings = async () => ({
+  mailer_autoconfirm: false
 });
 
-test("password signup returns a session without requesting verification mail", async () => {
+test("password signup requests a confirmation link with the correct redirect and creates no session", async () => {
   let requests = 0;
   const client = authClient(async (url, options) => {
     requests += 1;
     const target = new URL(url);
     assert.equal(target.pathname, "/auth/v1/signup");
-    assert.equal(target.searchParams.has("redirect_to"), false);
+    assert.equal(
+      target.searchParams.get("redirect_to"),
+      signupDetails.emailRedirectTo
+    );
     assert.equal(options.method, "POST");
     const body = JSON.parse(options.body);
     assert.equal(body.email, "shopper@example.com");
     assert.equal(body.password, signupDetails.password);
     assert.deepEqual(body.data, { name: "Shopper" });
     return Response.json({
-      access_token: "test-access-token",
-      refresh_token: "test-refresh-token",
-      expires_in: 3600,
-      token_type: "bearer",
-      user: { id: "new-shopper", email: "shopper@example.com" }
+      id: "new-shopper",
+      email: "shopper@example.com",
+      identities: []
     });
   });
   const data = await createPasswordAccount(
     client,
-    passwordOnlySettings,
+    confirmationSettings,
     signupDetails
   );
-  assert.equal(data.session.user.id, "new-shopper");
+  assert.equal(data.user.id, "new-shopper");
+  assert.equal(data.session, null);
+  assert.equal(
+    (await client.auth.getSession()).data.session,
+    null
+  );
   assert.equal(requests, 1);
 });
 
-test("signup does not trigger mail when confirmation is enabled or settings are unknown", async () => {
-  for (const settings of [{ mailer_autoconfirm: false }, {}]) {
+test("signup cannot bypass email verification when confirmation is disabled or settings are unknown", async () => {
+  for (const settings of [
+    { mailer_autoconfirm: true },
+    {},
+    null
+  ]) {
     let requests = 0;
     const client = authClient(async () => {
       requests += 1;
@@ -191,7 +218,7 @@ test("signup stops before creating an account when settings cannot be fetched", 
   assert.equal(requests, 0);
 });
 
-test("signup errors and a response without a session never appear successful", async () => {
+test("signup failures propagate and a missing user never appears successful", async () => {
   const code = "user_already_exists";
   const client = authClient(async () =>
     Response.json(
@@ -205,23 +232,110 @@ test("signup errors and a response without a session never appear successful", a
   await assert.rejects(
     createPasswordAccount(
       client,
-      passwordOnlySettings,
+      confirmationSettings,
       signupDetails
     ),
     { code }
   );
-  const unconfirmedClient = authClient(async () =>
-    Response.json({
-      id: "unconfirmed-shopper",
-      email: "shopper@example.com"
-    })
+  const invalidClient = authClient(async () =>
+    Response.json({})
   );
   await assert.rejects(
     createPasswordAccount(
-      unconfirmedClient,
-      passwordOnlySettings,
+      invalidClient,
+      confirmationSettings,
       signupDetails
     ),
     /try signing in/
+  );
+});
+
+test("an unexpected automatic signup session is signed out instead of bypassing confirmation", async () => {
+  const paths = [];
+  const client = authClient(async (url) => {
+    const target = new URL(url);
+    paths.push(target.pathname);
+    if (target.pathname === "/auth/v1/logout") {
+      assert.equal(target.searchParams.get("scope"), "local");
+      return new Response(null, { status: 204 });
+    }
+    return Response.json({
+      access_token: "test-access-token",
+      refresh_token: "test-refresh-token",
+      expires_in: 3600,
+      token_type: "bearer",
+      user: { id: "new-shopper", email: "shopper@example.com" }
+    });
+  });
+  await assert.rejects(
+    createPasswordAccount(
+      client,
+      confirmationSettings,
+      signupDetails
+    ),
+    /verification is temporarily unavailable/
+  );
+  assert.deepEqual(paths, [
+    "/auth/v1/signup",
+    "/auth/v1/logout"
+  ]);
+  assert.equal(
+    (await client.auth.getSession()).data.session,
+    null
+  );
+});
+
+test("resending requests a signup verification email without a password or session", async () => {
+  let requests = 0;
+  const client = authClient(async (url, options) => {
+    requests += 1;
+    const target = new URL(url);
+    assert.equal(target.pathname, "/auth/v1/resend");
+    assert.equal(
+      target.searchParams.get("redirect_to"),
+      signupDetails.emailRedirectTo
+    );
+    const body = JSON.parse(options.body);
+    assert.equal(body.type, "signup");
+    assert.equal(body.email, "shopper@example.com");
+    assert.equal(Object.hasOwn(body, "password"), false);
+    return Response.json({});
+  });
+  await resendVerificationEmail(client, signupDetails);
+  assert.equal(requests, 1);
+  assert.equal(
+    (await client.auth.getSession()).data.session,
+    null
+  );
+});
+
+test("resend rejects empty addresses without making requests and preserves service rate limits", async () => {
+  let requests = 0;
+  const client = authClient(async () => {
+    requests += 1;
+    return Response.json(
+      {
+        code: "over_email_send_rate_limit",
+        msg: "Email rate limit exceeded"
+      },
+      {
+        status: 429,
+        headers: { "X-Supabase-Api-Version": "2024-01-01" }
+      }
+    );
+  });
+  await assert.rejects(
+    resendVerificationEmail(client, { email: " " }),
+    /Enter your email/
+  );
+  assert.equal(requests, 0);
+  await assert.rejects(
+    resendVerificationEmail(client, signupDetails),
+    { code: "over_email_send_rate_limit" }
+  );
+  assert.equal(requests, 1);
+  assert.match(
+    authErrorMessage({ code: "over_email_send_rate_limit" }),
+    /wait a few minutes/
   );
 });

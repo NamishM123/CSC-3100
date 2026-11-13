@@ -3,6 +3,7 @@ import { Link, Navigate, useLocation } from "react-router-dom";
 import Screen from "../components/Screen.jsx";
 import AuthLoading from "../components/AuthLoading.jsx";
 import MfaChallenge from "../components/MfaChallenge.jsx";
+import ResendVerification from "../components/ResendVerification.jsx";
 import { useAppState } from "../state/useAppState.js";
 import { safeDest } from "../lib/format.js";
 import {
@@ -70,6 +71,18 @@ export default function SignIn() {
       </Screen>
     );
   if (user) {
+    if (
+      new URLSearchParams(route.search).get("signup") ===
+      "confirmed"
+    ) {
+      return (
+        <Navigate
+          to="/account-security"
+          replace
+          state={{ from: destination }}
+        />
+      );
+    }
     if (!location) {
       return (
         <Navigate
@@ -184,6 +197,12 @@ export default function SignIn() {
               </button>
             </div>
           </form>
+          <div className="actions">
+            <ResendVerification
+              email={email}
+              destination={destination}
+            />
+          </div>
           <div className="actions">
             <button
               className="btn ghost"

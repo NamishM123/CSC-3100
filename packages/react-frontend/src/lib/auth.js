@@ -36,33 +36,62 @@ export function authRedirectUrl(origin, destination) {
   return url.href;
 }
 
+export function signupRedirectUrl(origin, destination) {
+  const url = new URL(authRedirectUrl(origin, destination));
+  url.searchParams.set("signup", "confirmed");
+  return url.href;
+}
+
 export async function createPasswordAccount(
   client,
   readSettings,
-  { name, email, password }
+  { name, email, password, emailRedirectTo }
 ) {
   const validation = passwordValidationError(password);
   if (validation) throw new Error(validation);
   const settings = await readSettings();
-  // Do not create an email-confirmation account or trigger mail if the hosted
-  // project's configuration has not been updated yet.
-  if (settings.mailer_autoconfirm !== true) {
+  // Confirmation must be enforced by Auth, not just by this screen.
+  if (settings?.mailer_autoconfirm !== false) {
     throw new Error(
-      "Account creation is temporarily unavailable. Please try again later."
+      "Email verification is temporarily unavailable. Please try again later."
     );
   }
   const { data, error } = await client.auth.signUp({
     email: email.trim(),
     password,
-    options: { data: { name: name.trim() } }
+    options: {
+      data: { name: name.trim() },
+      emailRedirectTo
+    }
   });
   if (error) throw error;
-  if (!data?.session) {
+  if (data?.session) {
+    await client.auth.signOut({ scope: "local" });
+    throw new Error(
+      "Email verification is temporarily unavailable. Please try again later."
+    );
+  }
+  if (!data?.user?.id) {
     throw new Error(
       "Unable to finish creating your account. Please try signing in."
     );
   }
   return data;
+}
+
+export async function resendVerificationEmail(
+  client,
+  { email, emailRedirectTo }
+) {
+  const clean = email.trim();
+  if (!clean.includes("@"))
+    throw new Error("Enter your email address above first.");
+  const { error } = await client.auth.resend({
+    type: "signup",
+    email: clean,
+    options: { emailRedirectTo }
+  });
+  if (error) throw error;
 }
 
 export function authErrorMessage(error) {
@@ -78,7 +107,7 @@ export function authErrorMessage(error) {
     case "invalid_credentials":
       return "Email or password is incorrect.";
     case "email_not_confirmed":
-      return "This account is not ready to sign in. Please contact support.";
+      return "Verify your email before signing in. Check your inbox and spam folder, or request a new confirmation email below.";
     case "user_already_exists":
       return "An account already exists. Try signing in.";
     case "signup_disabled":

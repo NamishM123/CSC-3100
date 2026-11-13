@@ -12,7 +12,9 @@ import {
 import {
   authErrorMessage,
   authRedirectUrl,
-  createPasswordAccount
+  createPasswordAccount,
+  resendVerificationEmail,
+  signupRedirectUrl
 } from "../lib/auth.js";
 import { readMfaSession, verifyTotp } from "../lib/mfa.js";
 
@@ -138,12 +140,27 @@ export function useAuthSession() {
         });
       if (error) throw error;
     },
-    async signUp(details) {
+    async signUp(details, destination) {
       return createPasswordAccount(
         requireClient(),
         readAuthSettings,
-        details
+        {
+          ...details,
+          emailRedirectTo: signupRedirectUrl(
+            window.location.origin,
+            destination
+          )
+        }
       );
+    },
+    async resendVerification(email, destination) {
+      await resendVerificationEmail(requireClient(), {
+        email,
+        emailRedirectTo: signupRedirectUrl(
+          window.location.origin,
+          destination
+        )
+      });
     },
     async signInWithGoogle(destination) {
       requireClient();
