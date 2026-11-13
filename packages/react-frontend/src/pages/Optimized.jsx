@@ -109,11 +109,7 @@ export default function Optimized() {
       />
       {!rows.some((item) => item.query) ? (
         <>
-          <h2>
-            {state.catalog.pricesAreDemo
-              ? "Sample catalog comparison"
-              : "Catalog comparison"}
-          </h2>
+          <h2>Catalog comparison</h2>
           <p className="meta">
             {countNoun(rows.length, "item")} | stores within{" "}
             {state.radiusMi} mi

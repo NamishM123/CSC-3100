@@ -21,9 +21,6 @@ export default function StorePriceCard({
       <div>
         <div className="name-line">
           <strong>{row.store.name}</strong>
-          {row.source === "demo" ? (
-            <span className="badge">Sample</span>
-          ) : null}
           {cheapest ? (
             <span className="badge cheap">Cheapest</span>
           ) : null}

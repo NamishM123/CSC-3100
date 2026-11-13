@@ -8,34 +8,40 @@ export default function StoreCard({
   to,
   onSelect
 }) {
-  if (store.source === "kroger") {
-    return (
-      <button
-        type="button"
-        className="card store-card"
-        onClick={onSelect}>
-        <div>
-          <strong>{store.name}</strong>
-          <p className="muted">{store.address}</p>
-          <p className="fine">
-            Kroger family store · Select to locate on map
-          </p>
-        </div>
-        <strong className="distance">
-          {miles(store.distance_mi)}
-        </strong>
-      </button>
-    );
-  }
   return (
-    <Link className="card store-card" to={to}>
-      <div>
-        <strong>{store.name}</strong>
+    <article className="card store-card">
+      <div className="store-card-details">
+        {onSelect ? (
+          <button
+            type="button"
+            className="store-name"
+            aria-label={`Show ${store.name} on map`}
+            onClick={onSelect}>
+            {store.name}
+          </button>
+        ) : (
+          <Link
+            className="store-name"
+            to="/stores"
+            state={{ selectedStoreId: store.id }}>
+            {store.name}
+          </Link>
+        )}
+        <p className="muted">{store.address}</p>
         <p className="muted">
-          {variant === "drive"
-            ? `${miles(store.distance_mi)} | ${store.hours_label}`
-            : `${store.hours_label} | prices ${age}`}
+          {store.source === "kroger"
+            ? "Kroger family store"
+            : variant === "drive"
+              ? `${miles(store.distance_mi)} | ${store.hours_label}`
+              : `${store.hours_label} | prices ${age}`}
         </p>
+        <Link
+          className="text-link store-items-link"
+          to={to}
+          state={{ store }}
+          aria-label={`View items at ${store.name}`}>
+          View store items
+        </Link>
       </div>
       {variant === "drive" ? (
         <div className="drive">
@@ -47,6 +53,6 @@ export default function StoreCard({
           {miles(store.distance_mi)}
         </strong>
       )}
-    </Link>
+    </article>
   );
 }

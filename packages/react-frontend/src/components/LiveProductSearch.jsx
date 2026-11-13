@@ -1,9 +1,9 @@
 import { useKrogerSearch } from "../hooks/useKrogerSearch.js";
 import { rankKrogerStores } from "../lib/recommendations.js";
 import { dietaryStatus } from "../lib/search.js";
-import { miles, money } from "../lib/format.js";
+import { miles } from "../lib/format.js";
 import { useAppState } from "../state/useAppState.js";
-import AddItemToList from "./AddItemToList.jsx";
+import LiveProductCard from "./LiveProductCard.jsx";
 
 export default function LiveProductSearch({ query: rawQuery }) {
   const query = rawQuery.trim();
@@ -76,67 +76,18 @@ export default function LiveProductSearch({ query: rawQuery }) {
                     dietaryStatus(product, state.dietary).ok
                 )
                 .map((product) => {
-                  const exactQuery = [
-                    product.name,
-                    product.size_label === "Size unavailable"
-                      ? ""
-                      : product.size_label
-                  ]
-                    .filter(Boolean)
-                    .join(" ");
                   const fresh =
                     line.status !==
                       "Refresh prices to check availability" &&
                     !line.error;
                   return (
-                    <article
-                      className="card search-product-card"
-                      key={product.id}>
-                      {product.image_url ? (
-                        <img
-                          src={product.image_url}
-                          alt={product.name}
-                          loading="lazy"
-                        />
-                      ) : null}
-                      <div>
-                        <strong>{product.name}</strong>
-                        <p className="muted">
-                          {product.size_label}
-                        </p>
-                        <p>
-                          {fresh
-                            ? money(product.price)
-                            : "Refresh prices"}{" "}
-                          ·{" "}
-                          {product.availability === "in_stock"
-                            ? "In stock"
-                            : product.availability ===
-                                "out_of_stock"
-                              ? "Out of stock"
-                              : "Stock unconfirmed"}
-                        </p>
-                        {state.dietary.length ? (
-                          <p className="fine">
-                            Dietary information unverified.
-                          </p>
-                        ) : null}
-                        <AddItemToList
-                          request={{
-                            query:
-                              exactQuery.length <= 120
-                                ? exactQuery
-                                : query,
-                            name: product.name,
-                            image_url: product.image_url,
-                            size_label: product.size_label,
-                            storeSelections: {
-                              [store.id]: product.id
-                            }
-                          }}
-                        />
-                      </div>
-                    </article>
+                    <LiveProductCard
+                      key={product.id}
+                      product={product}
+                      storeId={store.id}
+                      query={query}
+                      fresh={fresh}
+                    />
                   );
                 })}
             </div>

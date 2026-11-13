@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import Screen from "../components/Screen.jsx";
 import StoreCard from "../components/StoreCard.jsx";
 import StoreMap from "../components/StoreMap.jsx";
@@ -9,34 +9,27 @@ import { nearbyStores } from "../lib/geo.js";
 import { useMapLocation } from "../hooks/useMapLocation.js";
 import { useKrogerLocations } from "../hooks/useKrogerLocations.js";
 import { useAppState } from "../state/useAppState.js";
+import { storeItemsPath } from "../lib/storeLinks.js";
 
 export default function Stores() {
   const { catalog, location, radiusMi } = useAppState();
+  const route = useLocation();
   const [mode, setMode] = useState("map");
-  const [selectedStoreId, setSelectedStoreId] = useState(null);
+  const [selectedStoreId, setSelectedStoreId] = useState(
+    route.state?.selectedStoreId || null
+  );
+  const [focusRequest, setFocusRequest] = useState(0);
   const { place, loading, error, retry } =
     useMapLocation(location);
   const kroger = useKrogerLocations(place, radiusMi);
   const stores = useMemo(
     () =>
       nearbyStores(
-        [
-          ...catalog.stores.map((store) => ({
-            ...store,
-            sample: catalog.storesAreDemo
-          })),
-          ...kroger.stores
-        ],
+        [...catalog.stores, ...kroger.stores],
         place,
         radiusMi
       ),
-    [
-      catalog.stores,
-      catalog.storesAreDemo,
-      kroger.stores,
-      place,
-      radiusMi
-    ]
+    [catalog.stores, kroger.stores, place, radiusMi]
   );
 
   function ageFor(storeId) {
@@ -66,12 +59,6 @@ export default function Stores() {
         Within {radiusMi} miles. Distances are straight-line
         estimates.
       </p>
-      {catalog.storesAreDemo ? (
-        <p className="fine store-data-note">
-          Sample store locations are available in San Luis
-          Obispo. The map follows your selected location.
-        </p>
-      ) : null}
       {kroger.loading ? (
         <p className="fine" role="status">
           Finding nearby Kroger family stores...
@@ -168,6 +155,7 @@ export default function Stores() {
               stores={stores}
               radiusMi={radiusMi}
               selectedStoreId={selectedStoreId}
+              focusRequest={focusRequest}
               onSelectStore={setSelectedStoreId}
             />
           ) : null}
@@ -179,17 +167,16 @@ export default function Stores() {
                   selectedStoreId === store.id
                     ? "store-result selected"
                     : "store-result"
-                }
-                onClick={() => setSelectedStoreId(store.id)}>
+                }>
                 <StoreCard
-                  key={store.id}
                   store={store}
                   variant="distance"
                   age={ageFor(store.id)}
-                  to={`/stores/${store.id}`}
+                  to={storeItemsPath(store)}
                   onSelect={() => {
                     setSelectedStoreId(store.id);
                     setMode("map");
+                    setFocusRequest((value) => value + 1);
                   }}
                 />
               </div>
