@@ -268,6 +268,262 @@ export const products = [
     dietary_verified: true,
     also_try: ["prod-milk"],
     keywords: ["oat", "milk"]
+  },
+  {
+    id: "prod-apples",
+    name: "Apples, Gala",
+    short_name: "Gala apples",
+    list_unit: "3 lb bag",
+    category: "Produce",
+    size_label: "3 lb bag",
+    unit_amount: 3,
+    unit: "lb",
+    image_url: null,
+    dietary: ["Vegan", "Gluten free"],
+    dietary_conflicts: [],
+    dietary_verified: true,
+    also_try: [],
+    keywords: ["apple", "apples", "gala"]
+  },
+  {
+    id: "prod-avocado",
+    name: "Avocados, Hass",
+    short_name: "Avocados",
+    list_unit: "each",
+    category: "Produce",
+    size_label: "each",
+    unit_amount: 1,
+    unit: "each",
+    image_url: null,
+    dietary: ["Vegan", "Gluten free"],
+    dietary_conflicts: [],
+    dietary_verified: true,
+    also_try: [],
+    keywords: ["avocado", "avocados", "hass"]
+  },
+  {
+    id: "prod-tomatoes",
+    name: "Tomatoes, Roma",
+    short_name: "Roma tomatoes",
+    list_unit: "lb",
+    category: "Produce",
+    size_label: "per lb",
+    unit_amount: 1,
+    unit: "lb",
+    image_url: null,
+    dietary: ["Vegan", "Gluten free"],
+    dietary_conflicts: [],
+    dietary_verified: true,
+    also_try: [],
+    keywords: ["tomato", "tomatoes", "roma"]
+  },
+  {
+    id: "prod-carrots",
+    name: "Carrots",
+    short_name: "Carrots",
+    list_unit: "2 lb bag",
+    category: "Produce",
+    size_label: "2 lb bag",
+    unit_amount: 2,
+    unit: "lb",
+    image_url: null,
+    dietary: ["Vegan", "Gluten free"],
+    dietary_conflicts: [],
+    dietary_verified: true,
+    also_try: [],
+    keywords: ["carrot", "carrots"]
+  },
+  {
+    id: "prod-yogurt",
+    name: "Greek yogurt, plain",
+    short_name: "Greek yogurt",
+    list_unit: "32 oz",
+    category: "Dairy",
+    size_label: "32 oz",
+    unit_amount: 32,
+    unit: "oz",
+    image_url: null,
+    dietary: ["Vegetarian", "Gluten free"],
+    dietary_conflicts: ["Vegan", "Dairy free"],
+    dietary_verified: true,
+    also_try: [],
+    keywords: ["yogurt", "greek", "yoghurt"]
+  },
+  {
+    id: "prod-butter",
+    name: "Butter, unsalted",
+    short_name: "Butter",
+    list_unit: "16 oz",
+    category: "Dairy",
+    size_label: "16 oz (4 sticks)",
+    unit_amount: 16,
+    unit: "oz",
+    image_url: null,
+    dietary: ["Vegetarian", "Gluten free"],
+    dietary_conflicts: ["Vegan", "Dairy free"],
+    dietary_verified: true,
+    also_try: [],
+    keywords: ["butter"]
+  },
+  {
+    id: "prod-cheddar",
+    name: "Cheddar cheese",
+    short_name: "Cheddar",
+    list_unit: "8 oz",
+    category: "Dairy",
+    size_label: "8 oz block",
+    unit_amount: 8,
+    unit: "oz",
+    image_url: null,
+    dietary: ["Vegetarian", "Gluten free"],
+    dietary_conflicts: ["Vegan", "Dairy free"],
+    dietary_verified: true,
+    also_try: [],
+    keywords: ["cheddar", "cheese"]
+  },
+  {
+    id: "prod-chicken",
+    name: "Chicken breast, boneless",
+    short_name: "Chicken breast",
+    list_unit: "lb",
+    category: "Meat & seafood",
+    size_label: "per lb",
+    unit_amount: 1,
+    unit: "lb",
+    image_url: null,
+    dietary: ["Gluten free", "Dairy free"],
+    dietary_conflicts: ["Vegan", "Vegetarian"],
+    dietary_verified: true,
+    also_try: [],
+    keywords: ["chicken", "breast", "poultry"]
+  },
+  {
+    id: "prod-ground-beef",
+    name: "Ground beef, 80/20",
+    short_name: "Ground beef",
+    list_unit: "lb",
+    category: "Meat & seafood",
+    size_label: "per lb",
+    unit_amount: 1,
+    unit: "lb",
+    image_url: null,
+    dietary: ["Gluten free", "Dairy free"],
+    dietary_conflicts: ["Vegan", "Vegetarian"],
+    dietary_verified: true,
+    also_try: ["prod-chicken"],
+    keywords: ["beef", "ground", "hamburger"]
+  },
+  {
+    id: "prod-rice",
+    name: "Rice, long grain white",
+    short_name: "White rice",
+    list_unit: "5 lb",
+    category: "Pantry",
+    size_label: "5 lb bag",
+    unit_amount: 5,
+    unit: "lb",
+    image_url: null,
+    dietary: ["Vegan", "Gluten free"],
+    dietary_conflicts: [],
+    dietary_verified: true,
+    also_try: [],
+    keywords: ["rice", "white rice"]
+  },
+  {
+    id: "prod-pasta",
+    name: "Spaghetti",
+    short_name: "Spaghetti",
+    list_unit: "16 oz",
+    category: "Pantry",
+    size_label: "16 oz",
+    unit_amount: 16,
+    unit: "oz",
+    image_url: null,
+    dietary: ["Vegan"],
+    dietary_conflicts: ["Gluten free"],
+    dietary_verified: true,
+    also_try: [],
+    keywords: ["pasta", "spaghetti", "noodles"]
+  },
+  {
+    id: "prod-olive-oil",
+    name: "Olive oil, extra virgin",
+    short_name: "Olive oil",
+    list_unit: "16.9 oz",
+    category: "Pantry",
+    size_label: "16.9 oz (500 mL)",
+    unit_amount: 16.9,
+    unit: "oz",
+    image_url: null,
+    dietary: ["Vegan", "Gluten free"],
+    dietary_conflicts: [],
+    dietary_verified: true,
+    also_try: [],
+    keywords: ["olive", "oil", "evoo"]
+  },
+  {
+    id: "prod-cereal",
+    name: "Toasted oat cereal",
+    short_name: "Oat cereal",
+    list_unit: "18 oz",
+    category: "Pantry",
+    size_label: "18 oz",
+    unit_amount: 18,
+    unit: "oz",
+    image_url: null,
+    dietary: ["Vegetarian", "Dairy free"],
+    dietary_conflicts: ["Vegan"],
+    dietary_verified: false,
+    also_try: [],
+    keywords: ["cereal", "oats", "breakfast"]
+  },
+  {
+    id: "prod-coffee",
+    name: "Ground coffee, medium roast",
+    short_name: "Ground coffee",
+    list_unit: "12 oz",
+    category: "Beverages",
+    size_label: "12 oz",
+    unit_amount: 12,
+    unit: "oz",
+    image_url: null,
+    dietary: ["Vegan", "Gluten free"],
+    dietary_conflicts: [],
+    dietary_verified: true,
+    also_try: [],
+    keywords: ["coffee", "ground", "medium roast"]
+  },
+  {
+    id: "prod-orange-juice",
+    name: "Orange juice, no pulp",
+    short_name: "Orange juice",
+    list_unit: "52 oz",
+    category: "Beverages",
+    size_label: "52 oz",
+    unit_amount: 52,
+    unit: "oz",
+    image_url: null,
+    dietary: ["Vegan", "Gluten free"],
+    dietary_conflicts: [],
+    dietary_verified: true,
+    also_try: [],
+    keywords: ["orange", "juice", "oj"]
+  },
+  {
+    id: "prod-bagels",
+    name: "Bagels, plain",
+    short_name: "Plain bagels",
+    list_unit: "6 ct",
+    category: "Bakery",
+    size_label: "6 count",
+    unit_amount: 6,
+    unit: "each",
+    image_url: null,
+    dietary: ["Vegan"],
+    dietary_conflicts: ["Gluten free"],
+    dietary_verified: false,
+    also_try: ["prod-bread"],
+    keywords: ["bagel", "bagels"]
   }
 ];
 
@@ -374,7 +630,152 @@ export const prices = [
   row("store-go", "prod-banana-bread", 4.49),
   row("store-tj", "prod-banana-bread", 4.99),
   row("store-v", "prod-banana-bread", 5.29),
-  row("store-sw", "prod-banana-bread", 5.49)
+  row("store-sw", "prod-banana-bread", 5.49),
+
+  row("store-fm", "prod-apples", 2.97, {
+    unit_price: 0.99,
+    unit: "lb"
+  }),
+  row("store-go", "prod-apples", 3.29),
+  row("store-sw", "prod-apples", 3.99, {
+    regular_price: 4.99,
+    member: true,
+    sale: true
+  }),
+  row("store-tj", "prod-apples", 3.49),
+  row("store-v", "prod-apples", 4.49),
+
+  row("store-tj", "prod-avocado", 0.79),
+  row("store-fm", "prod-avocado", 0.89),
+  row("store-go", "prod-avocado", 0.99),
+  row("store-sw", "prod-avocado", 1.25),
+  row("store-v", "prod-avocado", 1.49),
+
+  row("store-fm", "prod-tomatoes", 1.49, { unit: "lb" }),
+  row("store-go", "prod-tomatoes", 1.69, { unit: "lb" }),
+  row("store-tj", "prod-tomatoes", 1.99, { unit: "lb" }),
+  row("store-v", "prod-tomatoes", 1.99, { unit: "lb" }),
+  row("store-sw", "prod-tomatoes", 2.49, { unit: "lb" }),
+
+  row("store-tj", "prod-carrots", 1.49),
+  row("store-fm", "prod-carrots", 1.69),
+  row("store-go", "prod-carrots", 1.79),
+  row("store-sw", "prod-carrots", 2.29),
+  row("store-v", "prod-carrots", 2.49),
+
+  row("store-go", "prod-yogurt", 3.99),
+  row("store-fm", "prod-yogurt", 4.29),
+  row("store-tj", "prod-yogurt", 4.49),
+  row("store-sw", "prod-yogurt", 4.99, {
+    regular_price: 5.99,
+    member: true,
+    sale: true
+  }),
+  row("store-v", "prod-yogurt", 5.79),
+
+  row("store-go", "prod-butter", 3.29),
+  row("store-fm", "prod-butter", 3.49),
+  row("store-tj", "prod-butter", 3.69),
+  row("store-v", "prod-butter", 4.79),
+  row("store-sw", "prod-butter", 4.99),
+
+  row("store-tj", "prod-cheddar", 2.49),
+  row("store-fm", "prod-cheddar", 2.69),
+  row("store-go", "prod-cheddar", 2.79),
+  row("store-sw", "prod-cheddar", 2.99, {
+    regular_price: 3.99,
+    member: true,
+    sale: true
+  }),
+  row("store-v", "prod-cheddar", 3.49),
+
+  row("store-fm", "prod-chicken", 2.99, {
+    unit_price: 2.99,
+    unit: "lb"
+  }),
+  row("store-go", "prod-chicken", 3.49, {
+    unit_price: 3.49,
+    unit: "lb"
+  }),
+  row("store-sw", "prod-chicken", 3.99, {
+    unit_price: 3.99,
+    unit: "lb"
+  }),
+  row("store-v", "prod-chicken", 4.49, {
+    unit_price: 4.49,
+    unit: "lb"
+  }),
+  row("store-tj", "prod-chicken", 4.99, {
+    unit_price: 4.99,
+    unit: "lb"
+  }),
+
+  row("store-fm", "prod-ground-beef", 3.99, {
+    unit_price: 3.99,
+    unit: "lb"
+  }),
+  row("store-go", "prod-ground-beef", 4.29, {
+    unit_price: 4.29,
+    unit: "lb"
+  }),
+  row("store-sw", "prod-ground-beef", 4.99, {
+    unit_price: 4.99,
+    unit: "lb"
+  }),
+  row("store-v", "prod-ground-beef", 5.49, {
+    unit_price: 5.49,
+    unit: "lb"
+  }),
+  row("store-tj", "prod-ground-beef", 5.99, {
+    unit_price: 5.99,
+    unit: "lb"
+  }),
+
+  row("store-fm", "prod-rice", 4.49),
+  row("store-go", "prod-rice", 4.99),
+  row("store-tj", "prod-rice", 5.49),
+  row("store-v", "prod-rice", 6.29),
+  row("store-sw", "prod-rice", 6.49),
+
+  row("store-fm", "prod-pasta", 0.99),
+  row("store-go", "prod-pasta", 1.09),
+  row("store-tj", "prod-pasta", 1.29),
+  row("store-v", "prod-pasta", 1.69),
+  row("store-sw", "prod-pasta", 1.79),
+
+  row("store-tj", "prod-olive-oil", 5.99),
+  row("store-go", "prod-olive-oil", 6.29),
+  row("store-fm", "prod-olive-oil", 6.49),
+  row("store-v", "prod-olive-oil", 8.49),
+  row("store-sw", "prod-olive-oil", 8.99),
+
+  row("store-go", "prod-cereal", 2.99),
+  row("store-fm", "prod-cereal", 3.29),
+  row("store-tj", "prod-cereal", 3.49),
+  row("store-sw", "prod-cereal", 4.49, {
+    regular_price: 4.99,
+    member: true,
+    sale: true
+  }),
+  row("store-v", "prod-cereal", 4.79, { in_stock: false }),
+
+  row("store-go", "prod-coffee", 4.99),
+  row("store-fm", "prod-coffee", 5.49),
+  row("store-tj", "prod-coffee", 5.99),
+  row("store-sw", "prod-coffee", 7.49),
+  row("store-v", "prod-coffee", 7.99),
+
+  row("store-fm", "prod-orange-juice", 2.99),
+  row("store-go", "prod-orange-juice", 3.29),
+  row("store-tj", "prod-orange-juice", 3.99),
+  row("store-v", "prod-orange-juice", 4.29),
+  row("store-sw", "prod-orange-juice", 4.49),
+
+  row("store-tj", "prod-bagels", 1.99),
+  row("store-go", "prod-bagels", 2.29),
+  row("store-fm", "prod-bagels", 2.49),
+  row("store-v", "prod-bagels", 3.29),
+  row("store-sw", "prod-bagels", 3.49)
 ];
 
 export const shopping_lists = [
@@ -494,10 +895,10 @@ function buildPriceHistory() {
     const series = crafted
       ? BANANA_TJ
       : wave(
-        roundMoney(priceRow.price + 0.04),
-        priceRow.price,
-        30
-      );
+          roundMoney(priceRow.price + 0.04),
+          priceRow.price,
+          30
+        );
     series.forEach((value, index) => {
       rows.push({
         id: `hist-${priceRow.id}-${index}`,
