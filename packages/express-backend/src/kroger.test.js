@@ -230,14 +230,14 @@ test("normalizes all SKU variants, promotional prices, and explicit unknown stoc
   assert.notEqual(rows[0].id, rows[1].id);
 });
 
-test("map discovery includes more than five Kroger locations without additional product calls", async () => {
+test("map discovery shows all 200 Kroger locations without additional product calls", async () => {
   const { fetchImpl, calls } = fixture({
-    locations: Array.from({ length: 8 }, (_, index) => ({
+    locations: Array.from({ length: 200 }, (_, index) => ({
       ...location,
       locationId: String(index),
       geolocation: {
         ...body.location,
-        latitude: body.location.latitude + index * 0.001
+        latitude: body.location.latitude + index * 0.0001
       }
     }))
   });
@@ -245,11 +245,43 @@ test("map discovery includes more than five Kroger locations without additional 
     env,
     fetchImpl
   }).compare({ ...body, queries: [] });
-  assert.equal(result.stores.length, 8);
-  assert.equal(result.maxStores, 50);
+  assert.equal(result.stores.length, 200);
+  assert.equal(result.maxStores, 200);
+  assert.equal(result.stores.at(-1).id, "199");
+  assert.equal(
+    calls
+      .find(({ url }) => url.pathname.endsWith("/locations"))
+      .url.searchParams.get("filter.limit"),
+    "200"
+  );
+  assert.equal(result.limitedStores, true);
   assert.ok(
     !calls.some(({ url }) => url.pathname.endsWith("/products"))
   );
+});
+
+test("map discovery uses upstream totals to distinguish a complete result from a capped search", async () => {
+  const locations = Array.from({ length: 200 }, (_, index) => ({
+    ...location,
+    locationId: String(index)
+  }));
+  for (const total of [200, 250]) {
+    const { fetchImpl } = fixture({
+      override: (url) =>
+        url.pathname.endsWith("/locations")
+          ? json({
+              data: locations,
+              meta: { pagination: { total } }
+            })
+          : undefined
+    });
+    const result = await createKrogerClient({
+      env,
+      fetchImpl
+    }).compare({ ...body, queries: [] });
+    assert.equal(result.stores.length, 200);
+    assert.equal(result.limitedStores, total > 200);
+  }
 });
 
 test("active dietary filters enrich exact returned UPCs and failed facts never invent matches", async () => {

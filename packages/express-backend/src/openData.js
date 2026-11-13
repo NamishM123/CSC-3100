@@ -394,14 +394,10 @@ export function createOpenDataClient({
         const today = new Date(now())
           .toISOString()
           .slice(0, 10);
-        const since = new Date(now() - 90 * 86400000)
-          .toISOString()
-          .slice(0, 10);
         const params = new URLSearchParams({
           location_osm_type: identity.type.toUpperCase(),
           location_osm_id: identity.id,
           currency: "USD",
-          date__gte: since,
           date__lte: today,
           order_by: "-date",
           page_size: "50"
@@ -423,7 +419,6 @@ export function createOpenDataClient({
               Number(row.price) > 0 &&
               Number.isFinite(Number(row.price)) &&
               /^\d{4}-\d{2}-\d{2}$/.test(row.date) &&
-              row.date >= since &&
               row.date <= today
           )
           .sort((a, b) => b.date.localeCompare(a.date))
@@ -462,7 +457,6 @@ export function createOpenDataClient({
         return {
           offers,
           limited: data.total > data.items.length,
-          since,
           today
         };
       }

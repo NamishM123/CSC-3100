@@ -67,9 +67,9 @@ export default function CommunityStoreDetail({ storeId }) {
         </button>
       </div>
       <p className="muted">
-        Reported prices from the last 90 days. These are dated
-        observations, and do not confirm today&apos;s price or
-        stock.
+        The latest available price report for each item, with no
+        age cutoff. Check the last reported date; prices and
+        stock may have changed.
       </p>
       <DietaryNotice limited={data?.dietaryLimited} />
       <form
@@ -113,7 +113,11 @@ export default function CommunityStoreDetail({ storeId }) {
               </div>
             </div>
             <p className="muted">
-              Reported {offer.observed_on} · Stock unconfirmed
+              Last reported{" "}
+              <time dateTime={offer.observed_on}>
+                {offer.observed_on}
+              </time>{" "}
+              · Stock unconfirmed
               {offer.is_discounted
                 ? " · Discounted price; conditions may apply"
                 : ""}
@@ -147,7 +151,7 @@ export default function CommunityStoreDetail({ storeId }) {
         <p className="muted">
           {data.offers.length
             ? "No reported items match your search and dietary filters."
-            : "No recent community price reports for this store yet. Current inventory is not available from this source."}
+            : "No community price reports for this store yet. Current inventory is not available from this source."}
         </p>
       ) : null}
       {data?.limited ? (
