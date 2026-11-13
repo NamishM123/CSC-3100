@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Screen from "../components/Screen.jsx";
 import Sheet from "../components/Sheet.jsx";
 import MfaSettings from "../components/MfaSettings.jsx";
@@ -175,10 +175,15 @@ export default function Profile() {
           <ul className="plain-list">
             {state.recentSearches.map((term) => (
               <li key={term}>
-                <span>{term}</span>
+                <Link
+                  className="text-link"
+                  to={`/search?q=${encodeURIComponent(term)}`}>
+                  {term}
+                </Link>
                 <button
                   type="button"
                   className="text-link"
+                  aria-label={`Remove ${term} from recent searches`}
                   onClick={() => state.removeSearch(term)}>
                   Remove
                 </button>

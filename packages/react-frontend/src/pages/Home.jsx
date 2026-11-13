@@ -22,7 +22,6 @@ export default function Home() {
     radiusMi,
     setRadius,
     recentSearches,
-    rememberSearch,
     lists,
     items,
     setActiveList,
@@ -41,7 +40,6 @@ export default function Home() {
   function runSearch(term) {
     const clean = term.trim();
     if (!clean) return;
-    rememberSearch(clean);
     navigate(`/search?q=${encodeURIComponent(clean)}`);
   }
 

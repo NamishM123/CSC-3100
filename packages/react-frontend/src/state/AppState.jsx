@@ -26,7 +26,6 @@ import {
   prices,
   product_swaps,
   products,
-  search_history,
   store_chains,
   stores
 } from "../data/mock.js";
@@ -54,7 +53,7 @@ function defaultAccountState() {
     items: [],
     activeListId: null,
     justAddedProductId: null,
-    recentSearches: search_history.map((entry) => entry.term),
+    recentSearches: [],
     listsDirty: false,
     includeMember: true,
     suggestSwaps: false,
@@ -145,6 +144,23 @@ function AccountStateProvider({ auth, children }) {
     const remote = await loadRemoteCatalog();
     if (remote)
       setState((current) => applyRemote(current, remote));
+  }, []);
+  const rememberSearch = useCallback((term) => {
+    const clean = term.trim();
+    if (!clean) return;
+    setState((current) => {
+      if (current.recentSearches[0] === clean) return current;
+      return {
+        ...current,
+        recentSearches: [
+          clean,
+          ...current.recentSearches.filter(
+            (entry) =>
+              entry.toLowerCase() !== clean.toLowerCase()
+          )
+        ].slice(0, 8)
+      };
+    });
   }, []);
 
   useEffect(() => {
@@ -295,20 +311,7 @@ function AccountStateProvider({ auth, children }) {
         return;
       setState((current) => ({ ...current, radiusMi }));
     },
-    rememberSearch(term) {
-      const clean = term.trim();
-      if (!clean) return;
-      setState((current) => ({
-        ...current,
-        recentSearches: [
-          clean,
-          ...current.recentSearches.filter(
-            (entry) =>
-              entry.toLowerCase() !== clean.toLowerCase()
-          )
-        ].slice(0, 8)
-      }));
-    },
+    rememberSearch,
     removeSearch(term) {
       setState((current) => ({
         ...current,
