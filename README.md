@@ -99,6 +99,79 @@ APIs locally. Kroger map discovery now returns up to 200
 locations; SKU price comparisons remain limited to the nearest
 five stores.
 
+### Free weekly-ad collectors
+
+**Stores → Central Coast weekly ads** loads advertised deals
+from California Fresh Market, Spencer's Fresh Markets, and SLO
+Food Co-op. These regional publishers are listed separately from
+the map's radius-filtered physical stores. Confirm the
+participating branch and purchase conditions on the original ad;
+an advertised price does not confirm stock or enter the
+confirmed shopping-basket totals. Adding an advertised product
+to a list saves its name as a shopping request, not its price.
+
+- California Fresh's HTML collector extracts named prices,
+  descriptions, package details, sale dates, multi-buy
+  quantities, and additional CRV deposits. Responsive duplicates
+  are removed. Headings without a product name or unambiguous
+  sale dates are omitted.
+- The Co-op collector follows the newest specials post to its
+  PDF. A narrow parser reads the current two-column Fresh Deals
+  produce layout using positioned text. Other layouts remain
+  available through the original flyer link.
+- Spencer's collector discovers and reads up to four public
+  flyer PDFs. Its current flyers are image-only, so the app
+  provides the original PDFs rather than guessing product
+  prices. The optional local OCR command below produces text for
+  review; OCR digits never become product-price records
+  automatically.
+
+No retailer key or paid scraping/OCR service is required. The
+existing authenticated `/api/open-data` endpoint accepts
+`{ "action": "weeklyAds", "provider": "california-fresh" }`; the
+other provider IDs are `spencers` and `slo-food-coop`. Clients
+cannot supply arbitrary upstream URLs. Fixed publisher hosts and
+document paths, checked redirects, response-size limits, request
+pacing, and worker timeouts bound collection. Non-OCR collection
+has a 45-second budget. Successful responses cache in memory for
+an hour per server instance; failures and partial downloads have
+a five-minute cooldown. Cached sale dates are rechecked at
+Pacific midnight. Expired and upcoming prices are excluded, and
+missing dates are never inferred from the download time. Refresh
+uses this same cache. There is no scheduled crawler or durable
+production price database.
+
+To save JSON snapshots locally, run from the repository root:
+
+```bash
+npm run scrape:weekly-ads -w express-backend
+npm run scrape:weekly-ads -w express-backend -- --provider=california-fresh
+npm run scrape:weekly-ads -w express-backend -- --provider=spencers --ocr
+```
+
+Snapshots go to the Git-ignored
+`packages/express-backend/.local/weekly-ads/` directory. Use
+`--output=directory` to choose another destination and `--help`
+for options. A failed source leaves its previous file untouched
+and the command exits nonzero; check `fetched_at` before reusing
+an old snapshot. The app fetches its own current source data and
+does not read these local files. The local OCR option renders
+PDFs with PDF.js/canvas and uses Tesseract.js; it downloads the
+English language model and can take several minutes. Its
+`review_text` and confidence values are deliberately separate
+from `offers`. OCR does not run in the web endpoint.
+
+Use Node.js 24 LTS (the backend minimum is 22.19). Set
+`OPEN_DATA_USER_AGENT` to your app's name and real contact
+URL/email before public deployment. The source sites' layouts,
+access policies, and reuse terms can change; review them before
+redistributing data publicly. Original links and publisher
+attribution are retained. Both Vercel configurations include the
+PDF worker files; deploy the backend and frontend together. No
+database migration is needed. The unit tests exercise parser
+ambiguity, dates, caching, URL restrictions, partial failures,
+and real PDF text extraction without contacting retailers.
+
 ### Kroger list recommendations
 
 In **Lists**, create a list and use **Add an item to compare at
@@ -216,8 +289,8 @@ requests. Retailer prices and stock can change before checkout.
 
 For the app plus the local background notification server, use
 `npm run dev:local` instead. This starts both servers; leave
-that terminal open. Use Node.js 24 LTS (minimum 22.13 for the
-backend's built-in SQLite support).
+that terminal open. Use Node.js 24 LTS (minimum 22.19 for the
+backend's scraper dependencies and built-in SQLite support).
 
 Create an account with your email and password. Signup signs you
 in immediately and offers optional authenticator setup; you can

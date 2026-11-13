@@ -10,14 +10,19 @@
     "test": "node --test src/*.test.js src/notifications/*.test.js",
     "notifications:setup": "node --env-file-if-exists=.env.local scripts/notifications.js setup",
     "notifications:check": "node --env-file-if-exists=.env.local scripts/notifications.js check",
+    "scrape:weekly-ads": "node --env-file-if-exists=.env.local scripts/scrape-weekly-ads.js",
     "lint": "eslint ."
   },
   "dependencies": {
+    "@napi-rs/canvas": "^1.1.1",
+    "cheerio": "^1.2.0",
     "express": "^5.2.1",
+    "pdfjs-dist": "^6.5.438",
+    "tesseract.js": "^7.0.0",
     "web-push": "^3.6.7"
   },
   "engines": {
-    "node": ">=22.13.0"
+    "node": ">=22.19.0"
   },
   "devDependencies": {
     "@eslint/compat": "^2.1.1",
