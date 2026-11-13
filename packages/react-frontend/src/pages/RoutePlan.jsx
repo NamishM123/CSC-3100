@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import Screen from "../components/Screen.jsx";
-import { DEMO_NOW } from "../data/mock.js";
 import { compareList } from "../lib/compare.js";
 import { itemSummary, miles, money } from "../lib/format.js";
 import { useAppState } from "../state/useAppState.js";
@@ -24,7 +23,7 @@ export default function RoutePlan() {
     acceptedSwapIds: state.acceptedSwapIds,
     radiusMi: state.radiusMi,
     includeMember: state.includeMember,
-    now: DEMO_NOW
+    now: state.now
   });
   const stops =
     state.routePlan === "single" && plan.single

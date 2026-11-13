@@ -14,6 +14,11 @@
 // 5 Oct 2026, the time drawn on the prototype) so labels
 // such as "2 hr ago" stay stable.
 
+import {
+  builtInPrices,
+  builtInProducts
+} from "./builtInProducts.js";
+
 export const DEMO_NOW = "2026-10-05T16:41:00.000Z";
 
 const UPDATED = {
@@ -125,6 +130,7 @@ export const stores = [
 ];
 
 export const products = [
+  ...builtInProducts,
   {
     id: "prod-bananas",
     name: "Bananas",
@@ -296,6 +302,7 @@ function row(storeId, productId, price, extra = {}) {
 // $17.62 split across Trader Joe's and Grocery Outlet,
 // or $21.47 for every item at Trader Joe's.
 export const prices = [
+  ...builtInPrices(row),
   row("store-tj", "prod-bananas", 0.19, {
     unit_price: 0.58,
     unit: "lb"
@@ -494,10 +501,10 @@ function buildPriceHistory() {
     const series = crafted
       ? BANANA_TJ
       : wave(
-        roundMoney(priceRow.price + 0.04),
-        priceRow.price,
-        30
-      );
+          roundMoney(priceRow.price + 0.04),
+          priceRow.price,
+          30
+        );
     series.forEach((value, index) => {
       rows.push({
         id: `hist-${priceRow.id}-${index}`,

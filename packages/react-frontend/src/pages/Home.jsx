@@ -113,8 +113,34 @@ export default function Home() {
       </div>
 
       <div className="section-title">
+        <h2>Browse groceries</h2>
+      </div>
+      <div className="catalog-browse-grid">
+        {catalog.products.map((product) => (
+          <Link
+            className="card catalog-browse-item"
+            key={product.id}
+            to={`/search?q=${encodeURIComponent(product.name)}`}>
+            <img
+              src={product.image_url}
+              alt=""
+              loading="lazy"
+            />
+            <strong>{product.name}</strong>
+            <span className="fine">{product.size_label}</span>
+          </Link>
+        ))}
+      </div>
+
+      <div className="section-title">
         <h2>Your lists</h2>
       </div>
+      {!lists.length ? (
+        <p className="muted">
+          No saved lists yet.{" "}
+          <Link to="/list">Create your first list</Link>.
+        </p>
+      ) : null}
       <div className="stack cards-grid">
         {lists.map((list) => {
           const count = items.filter(
@@ -152,7 +178,9 @@ export default function Home() {
                 key={miles}
                 type="button"
                 className={
-                  !customSelected && miles === radiusMi ? "choice on" : "choice"
+                  !customSelected && miles === radiusMi
+                    ? "choice on"
+                    : "choice"
                 }
                 onClick={() => {
                   setCustomSelected(false);
@@ -165,16 +193,18 @@ export default function Home() {
 
             <button
               type="button"
-              className={customSelected ? "choice on" : "choice"}
+              className={
+                customSelected ? "choice on" : "choice"
+              }
               onClick={() => {
                 setCustomSelected(true);
                 setCustomRadius(
-                  customRadius || (
-                    !RADIUS_OPTIONS.includes(radiusMi) ? String(radiusMi) : "20"
-                  )
+                  customRadius ||
+                    (!RADIUS_OPTIONS.includes(radiusMi)
+                      ? String(radiusMi)
+                      : "20")
                 );
-              }}
-            >
+              }}>
               Custom
             </button>
 
@@ -196,8 +226,7 @@ export default function Home() {
 
                   setRadius(miles);
                   setRadiusOpen(false);
-                }}
-              >
+                }}>
                 <label htmlFor="custom-radius-input">
                   Enter radius in miles (up to 50)
                 </label>

@@ -7,14 +7,22 @@ import {
 import Screen from "../components/Screen.jsx";
 import Sheet from "../components/Sheet.jsx";
 import StorePriceCard from "../components/StorePriceCard.jsx";
-import { DEMO_NOW, DIETARY_FILTERS } from "../data/mock.js";
+import AddItemToList from "../components/AddItemToList.jsx";
+import LiveProductSearch from "../components/LiveProductSearch.jsx";
+import { DIETARY_FILTERS } from "../data/mock.js";
+import { priceClock } from "../lib/catalog.js";
 import { useAppState } from "../state/useAppState.js";
 import {
   ageLabel,
   isStale,
-  miles
+  miles,
+  money
 } from "../lib/format.js";
-import { dietaryStatus, findProduct } from "../lib/search.js";
+import {
+  dietaryStatus,
+  findProduct,
+  productMatchesQuery
+} from "../lib/search.js";
 
 export default function SearchResults() {
   const {
@@ -33,6 +41,12 @@ export default function SearchResults() {
   const [dietOpen, setDietOpen] = useState(false);
   const found = findProduct(catalog.products, query);
   const status = dietaryStatus(found.primary, dietary);
+  const matches = catalog.products.filter(
+    (product) =>
+      query.trim() &&
+      productMatchesQuery(product, query) &&
+      dietaryStatus(product, dietary).ok
+  );
 
   function runSearch(term) {
     const clean = term.trim();
@@ -106,9 +120,10 @@ export default function SearchResults() {
 
       {!found.primary ? (
         <div className="empty">
-          <h2>No match for &quot;{query}&quot;</h2>
+          <h2>No catalog match for &quot;{query}&quot;</h2>
           <p>
-            Check the spelling, or try an item we already carry.
+            Check the spelling, or see live Kroger results
+            below.
           </p>
           {found.suggestion ? (
             <button
@@ -172,7 +187,10 @@ export default function SearchResults() {
           ) : null}
           <div className="stack cards-grid">
             {rows.map((row) => {
-              const stale = isStale(row.updated_at, DEMO_NOW);
+              const stale = isStale(
+                row.updated_at,
+                priceClock(row)
+              );
               const to = stale
                 ? `/product/${found.primary.id}?warning=stale`
                 : `/product/${found.primary.id}`;
@@ -186,7 +204,15 @@ export default function SearchResults() {
                   cheapest={row.id === cheapestId}
                   stale={stale}
                   staleLabel="Old price"
-                  details={<>{miles(row.store.distance_mi)} | updated {ageLabel(row.updated_at, DEMO_NOW)}</>}
+                  details={
+                    <>
+                      {miles(row.store.distance_mi)} | updated{" "}
+                      {ageLabel(
+                        row.updated_at,
+                        priceClock(row)
+                      )}
+                    </>
+                  }
                 />
               );
             })}
@@ -210,6 +236,67 @@ export default function SearchResults() {
         </>
       ) : null}
 
+      <section className="stack">
+        <h2>Catalog products</h2>
+        <p className="fine">
+          Built-in offers are sample prices assigned to sample
+          stores. Live Kroger prices appear separately below.
+        </p>
+        <div className="stack cards-grid">
+          {matches.map((product) => {
+            const offers = catalog.prices.filter(
+              (offer) =>
+                offer.product_id === product.id &&
+                !isStale(offer.updated_at, priceClock(offer)) &&
+                offer.in_stock &&
+                catalog.stores.some(
+                  (store) =>
+                    store.id === offer.store_id &&
+                    (!within || store.distance_mi <= radiusMi)
+                )
+            );
+            const storeNames = [
+              ...new Set(
+                offers.map(
+                  (offer) =>
+                    catalog.stores.find(
+                      (store) => store.id === offer.store_id
+                    )?.name
+                )
+              )
+            ];
+            return (
+              <article
+                className="card search-product-card"
+                key={product.id}>
+                <img
+                  src={product.image_url}
+                  alt={product.name}
+                  loading="lazy"
+                />
+                <div>
+                  <Link to={`/product/${product.id}`}>
+                    <strong>{product.name}</strong>
+                  </Link>
+                  <p className="muted">{product.size_label}</p>
+                  <p>
+                    {offers.length
+                      ? `From ${money(Math.min(...offers.map((offer) => offer.price)))}`
+                      : "Price unavailable"}
+                  </p>
+                  <p className="fine">
+                    {storeNames.length
+                      ? storeNames.join(" · ")
+                      : "No stores in this radius"}
+                  </p>
+                  <AddItemToList product={product} />
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      </section>
+      <LiveProductSearch key={query} query={query} />
       {dietOpen ? (
         <Sheet
           title="Dietary"

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Screen from "../components/Screen.jsx";
 import KrogerRecommendations from "../components/KrogerRecommendations.jsx";
-import { DEMO_NOW } from "../data/mock.js";
+import { priceClock } from "../lib/catalog.js";
 import { compareList } from "../lib/compare.js";
 import {
   ageLabel,
@@ -34,7 +34,7 @@ export default function Optimized() {
     acceptedSwapIds: state.acceptedSwapIds,
     radiusMi: state.radiusMi,
     includeMember: state.includeMember,
-    now: DEMO_NOW
+    now: state.now
   });
   const [selected, setSelected] = useState("split");
   const swap = state.catalog.product_swaps.find((entry) =>
@@ -73,7 +73,14 @@ export default function Optimized() {
     selected === "single" && plan.single ? "single" : "split";
 
   const age = plan.oldestUpdatedAt
-    ? ageLabel(plan.oldestUpdatedAt, DEMO_NOW)
+    ? ageLabel(
+        plan.oldestUpdatedAt,
+        priceClock(
+          state.catalog.prices.find(
+            (row) => row.updated_at === plan.oldestUpdatedAt
+          )
+        )
+      )
     : null;
 
   return (
@@ -96,7 +103,10 @@ export default function Optimized() {
           </button>
         ) : null
       }>
-      <KrogerRecommendations items={rows} />
+      <KrogerRecommendations
+        key={list?.id || "empty"}
+        items={rows}
+      />
       {!rows.some((item) => item.query) ? (
         <>
           <h2>

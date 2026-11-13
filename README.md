@@ -42,8 +42,45 @@ package size you want, or leave the cheapest confirmed match.
 Edit the list to remove items or change quantities; check off
 purchased items to exclude them. These changes and product
 selections recalculate prices and scores immediately. Lists,
-per-store choices, and price priority stay in this browser's
-account-scoped session storage.
+per-store SKU choices, quantities, checked items, and price
+priority save automatically to the signed-in account in
+Supabase. New accounts start with no lists. Search shows
+built-in catalog products and live Kroger products; either can
+be added to an existing or new list. The built-in catalog
+includes 21 pictured products assigned to sample stores.
+Built-in sample offers remain labeled as samples and do not
+become live prices merely by being saved.
+
+Apply
+[`202611120001_account_saved_lists.sql`](./supabase/migrations/202611120001_account_saved_lists.sql)
+after the existing MFA migration before running this version.
+The new `account_list_state` table uses Auth UUID ownership,
+row-level security, and the enrolled-MFA check. The app waits
+for saved lists to load before allowing edits, reports save
+failures with retry, and checks revisions so a second device
+cannot silently overwrite a newer save. A conflict offers
+**Reload saved lists**, which replaces this tab's unsaved edits.
+An optional rollback-only
+[RLS smoke test](./supabase/tests/account_saved_lists.sql)
+checks actual authenticated roles and cross-account isolation in
+the SQL Editor after migration. This SQL test requires your
+Supabase database; `npm test` exercises persistence, conflicts,
+and refreshed-price behavior with mocked data APIs. Wait for
+**Lists saved to your account** before closing. Sign-out flushes
+pending saves before clearing this tab's account cache.
+
+Saved lists contain shopping intent and product identifiers,
+never price snapshots. Opening a list, returning to the app, and
+each four-minute interval trigger fresh Kroger requests. The
+existing two-minute server cache still applies. A saved SKU
+whose price changes contributes its new price and quantity to
+the current basket; an unavailable saved SKU stays unavailable
+rather than switching products. Catalog offers reload on
+sign-in, on list selection, on focus, and every minute while
+open; connected catalog updates also recalculate baskets.
+Built-in stores without a live retailer feed retain illustrative
+prices. Real price updates currently come from Kroger or the
+connected catalog, not live Safeway/Vons/etc. APIs.
 
 The default score uses 70% price and 30% distance. Adjust the
 slider to change those priorities. A store that covers the full
@@ -66,9 +103,11 @@ constraints. Ambiguous typos require a product selection.
 Unconfirmed stock, unavailable prices, and results at least five
 minutes old don't count toward coverage. An unavailable selected
 product stays unavailable until you choose another product or
-clear the selection. Use **Refresh prices** to check again.
-Search failures are shown separately from empty product results;
-sample catalog prices never fill gaps in Kroger results.
+clear the selection. Use **Refresh prices** to check again
+immediately; automatic refresh also runs when you return and
+every four minutes. Search failures are shown separately from
+empty product results; sample catalog prices never fill gaps in
+Kroger results.
 
 The server uses
 [Kroger's public APIs](https://www.postman.com/kroger/the-kroger-co-s-public-workspace/collection/ki6utqb/kroger-public-apis)
@@ -109,10 +148,10 @@ For the app plus the local background notification server, use
 that terminal open. Use Node.js 24 LTS (minimum 22.13 for the
 backend's built-in SQLite support).
 
-Create an account with your email and password. Signup signs
-you in immediately and offers optional authenticator setup;
-you can skip it. Authentication uses Supabase; there are no
-preset demo credentials. Then allow location, or enter ZIP `93405`.
+Create an account with your email and password. Signup signs you
+in immediately and offers optional authenticator setup; you can
+skip it. Authentication uses Supabase; there are no preset demo
+credentials. Then allow location, or enter ZIP `93405`.
 
 Other scripts:
 
@@ -305,8 +344,8 @@ In Supabase **Authentication > Sign In / Providers > Email**,
 keep email/password login enabled and turn **Confirm email**
 **off**, then save. This hosted setting is required; deploying
 the code does not change it. The app checks Auth settings before
-password signup and stops if email confirmation is still on,
-so it does not trigger an unwanted verification email. No SMTP
+password signup and stops if email confirmation is still on, so
+it does not trigger an unwanted verification email. No SMTP
 provider is needed for this signup flow. Email remains the login
 identifier. See
 [Supabase signup configuration](https://supabase.com/docs/reference/javascript/auth-signup).
@@ -323,9 +362,9 @@ Under Supabase Authentication URL Configuration, allow
 and
 [redirect configuration](https://supabase.com/docs/guides/auth/redirect-urls).
 
-Catalog and shopping-list data still use the prototype data
-layer; Supabase Auth integration does not migrate that data to
-the lookup model.
+Catalog data still uses the prototype data layer. Account-owned
+saved lists use the separate `account_list_state` table; neither
+feature migrates the public catalog to the live-lookup model.
 
 ### TE6: Access control and sequence diagrams
 
@@ -337,15 +376,15 @@ Email is the login identifier. The class example's route names,
 in-memory credential array, and token secret are therefore not
 needed in Express.
 
-| TE6 requirement                             | Implementation in this project                                                                                                                                              |
-| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Sign-up and sign-in forms                   | `pages/SignUp.jsx`, `pages/SignIn.jsx`                                                                                                                                      |
-| Persistent credentials and password hashing | Supabase Auth database; salted bcrypt hashes                                                                                                                                |
-| Token generation and client storage         | Supabase issues access JWTs and refresh tokens; its SDK persists the session in browser local storage and refreshes it                                                      |
-| Send tokens to protected endpoints          | `lib/pushNotifications.js` sends `Authorization: Bearer <access_token>`; the SDK also attaches the session token to Data API requests                                       |
-| Backend authentication and failures         | Express `requireAuth()` in `src/auth.js`; missing/invalid/expired tokens return 401, unfinished required MFA returns 403, unavailable Auth returns 503                      |
-| Prevent access to other accounts' data      | Notification queries use the verified `req.user.id`; local lists use account-scoped session storage; prototype database lists are denied by the existing security migration |
-| Protect app views                           | `RequireAuth` in `App.jsx` waits for session validation and redirects to `/sign-in` while preserving the destination                                                        |
+| TE6 requirement                             | Implementation in this project                                                                                                                          |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Sign-up and sign-in forms                   | `pages/SignUp.jsx`, `pages/SignIn.jsx`                                                                                                                  |
+| Persistent credentials and password hashing | Supabase Auth database; salted bcrypt hashes                                                                                                            |
+| Token generation and client storage         | Supabase issues access JWTs and refresh tokens; its SDK persists the session in browser local storage and refreshes it                                  |
+| Send tokens to protected endpoints          | `lib/pushNotifications.js` sends `Authorization: Bearer <access_token>`; the SDK also attaches the session token to Data API requests                   |
+| Backend authentication and failures         | Express `requireAuth()` in `src/auth.js`; missing/invalid/expired tokens return 401, unfinished required MFA returns 403, unavailable Auth returns 503  |
+| Prevent access to other accounts' data      | Notification queries use the verified `req.user.id`; saved lists enforce Auth ownership and MFA through RLS; legacy prototype list tables remain denied |
+| Protect app views                           | `RequireAuth` in `App.jsx` waits for session validation and redirects to `/sign-in` while preserving the destination                                    |
 
 The diagrams below describe the current implementation. React
 file paths are relative to `packages/react-frontend/src`, and
@@ -518,18 +557,18 @@ owner/member policies exist. Removing frontend list reads does
 not replace this database protection. See
 [Supabase RLS](https://supabase.com/docs/guides/database/postgres/row-level-security).
 
-Shopping lists remain sample/local data in this version; the
-catalog loader never queries or imports database shopping lists.
-Account-specific lists, location, and searches load only after
-authentication passes, use separate per-account session-storage
-keys, and clear from the current tab on sign-out. Public catalog
-failures can still retain demo catalog rows; private API
-failures show errors instead.
+Shopping lists use the account-owned `account_list_state` table;
+the public catalog loader never queries private lists. Lists,
+location, and searches load only after authentication passes.
+Per-account tab caches clear on sign-out; saved Supabase lists
+remain available for the next session. Public catalog failures
+can retain sample rows; private list failures show errors and
+offer retry.
 
 Validate TE6 with `npm test`, `npm run lint`, and
-`npm run build`, then use test accounts to check immediate signup,
-incorrect passwords, sign-in/reload, optional 2FA,
-and sign-out. The
+`npm run build`, then use test accounts to check immediate
+signup, incorrect passwords, sign-in/reload, optional 2FA, and
+sign-out. The
 [API and database verification checklist](#5-verify-api-and-database-enforcement)
 covers unauthorized requests and isolation between accounts.
 Automated tests use stubbed Auth responses and local storage /
@@ -557,13 +596,13 @@ Supabase settings automatically.
    authenticator/TOTP enrollment and verification switches. See
    [Supabase MFA setup](https://supabase.com/docs/guides/auth/auth-mfa).
 3. In **Authentication → Sign In / Providers → Email**, keep
-   email/password login enabled and **Confirm email off**. Set the
-   minimum password length to **15**, matching this app's signup
-   rule. Enable leaked-password protection if your plan offers
-   it. Password policy must be configured in Supabase as well:
-   browser validation can be bypassed. Existing passwords can
-   still be used to sign in; this app does not force a password
-   reset.
+   email/password login enabled and **Confirm email off**. Set
+   the minimum password length to **15**, matching this app's
+   signup rule. Enable leaked-password protection if your plan
+   offers it. Password policy must be configured in Supabase as
+   well: browser validation can be bypassed. Existing passwords
+   can still be used to sign in; this app does not force a
+   password reset.
 4. Under **Authentication → URL Configuration**, set the Site
    URL to your HTTPS production origin. Add the exact production
    callback `https://YOUR-SITE/sign-in` and development callback
@@ -645,13 +684,12 @@ from the current file does not revoke an exposed key.
 
 The prototype `shopping_lists` and `shopping_list_items` tables
 lack enforceable ownership. The migration closes both tables to
-browser clients even after 2FA. The app continues using
-sample/local lists scoped to the signed-in account; existing
-database rows are preserved. Before enabling real database list
-sync, implement owner/member IDs tied to `auth.users`, test
-owner/member RLS, and deliberately replace the
-`Require list ownership implementation` deny policy. A person's
-display name or a `shared_with` label is not proof of ownership.
+browser clients even after 2FA; existing prototype rows are
+preserved. Account list sync instead uses the new
+`account_list_state` table, owned by an `auth.users` UUID with
+an independent ownership policy and the same restrictive MFA
+check. The legacy deny policy stays in place. A person's display
+name or a `shared_with` label is not proof of ownership.
 
 The live-lookup users/searches/jobs/results tables stay closed
 unless a separate permission policy grants access. Service-role
@@ -722,19 +760,20 @@ from `src/auth.js` and add their own resource ownership checks.
 
 Before production rollout, use a test account and verify:
 
-| Check                                          | Expected result                                  |
-| ---------------------------------------------- | ------------------------------------------------ |
-| Password sign-in without enrolled 2FA          | Normal access                                    |
-| Incorrect/expired setup or login code          | Rejected; app stays locked during login          |
-| Password sign-in with enrolled 2FA             | Code required; correct code restores destination |
-| Google sign-in with enrolled 2FA               | Same app-level code requirement                  |
-| Reload/direct protected URL before code        | Still locked                                     |
-| Auth/factor lookup unavailable                 | No protected app access; retry/sign-out shown    |
-| API called with enrolled user's `aal1` token   | HTTP 403                                         |
-| API called with verified `aal2` token          | HTTP 200                                         |
-| Public catalog as signed-out user              | Catalog remains readable                         |
-| Prototype list tables through browser Data API | No rows accessible, including after 2FA          |
-| Account A signs out, Account B signs in        | A's local lists/location/searches do not appear  |
+| Check                                          | Expected result                                                                                            |
+| ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Password sign-in without enrolled 2FA          | Normal access                                                                                              |
+| Incorrect/expired setup or login code          | Rejected; app stays locked during login                                                                    |
+| Password sign-in with enrolled 2FA             | Code required; correct code restores destination                                                           |
+| Google sign-in with enrolled 2FA               | Same app-level code requirement                                                                            |
+| Reload/direct protected URL before code        | Still locked                                                                                               |
+| Auth/factor lookup unavailable                 | No protected app access; retry/sign-out shown                                                              |
+| API called with enrolled user's `aal1` token   | HTTP 403                                                                                                   |
+| API called with verified `aal2` token          | HTTP 200                                                                                                   |
+| Public catalog as signed-out user              | Catalog remains readable                                                                                   |
+| Prototype list tables through browser Data API | No rows accessible, including after 2FA                                                                    |
+| Account list state through browser Data API    | Only the verified owner can read/write; another account and unenrolled assurance for enrolled users cannot |
+| Account A signs out, Account B signs in        | A's local lists/location/searches do not appear                                                            |
 
 To check the policy helper itself, replace `TEST_USER_UUID` with
 the Auth ID of your enrolled test account and run this SQL. Do
@@ -780,31 +819,32 @@ anti-framing, MIME sniffing prevention, the
 `strict-origin-when-cross-origin` referrer policy, and disabled
 camera/microphone permissions. Cross-origin HTTPS requests send
 only the site origin, keeping page paths and query strings
-private while allowing OpenStreetMap to identify map requests
-as required by its
+private while allowing OpenStreetMap to identify map requests as
+required by its
 [tile usage policy](https://operations.osmfoundation.org/policies/tiles/).
 The map tile layer also sets this referrer policy explicitly.
-Inline styles remain allowed for React/Leaflet positioning; inline
-scripts and eval are blocked. The policy allows the standard
-Supabase project domains, ZIP lookup, and OpenStreetMap tiles.
-If using a custom Supabase domain, add its exact HTTPS/WSS
-origins to `connect-src` and its storage image origin to
-`img-src` in **both** Vercel configs before deploying. Add only
-required origins, then check the browser console for CSP
+Inline styles remain allowed for React/Leaflet positioning;
+inline scripts and eval are blocked. The policy allows the
+standard Supabase project domains, ZIP lookup, and OpenStreetMap
+tiles. If using a custom Supabase domain, add its exact
+HTTPS/WSS origins to `connect-src` and its storage image origin
+to `img-src` in **both** Vercel configs before deploying. Add
+only required origins, then check the browser console for CSP
 violations. The development Vite server does not apply this
 production CSP.
 
 Supabase session tokens persist through its SDK storage. App
-list/location/search caches are separate per account and per
-tab, are not loaded until authentication including 2FA passes,
-and are cleared from the current tab on sign-out. Old unscoped
-demo caches are no longer read. Browser storage is not encrypted
-and this SPA does not claim HttpOnly-cookie protection; avoid
-shared browser profiles for sensitive data. **Sign out all
-devices** revokes refresh sessions. Previously issued access
-JWTs may remain valid until expiry; it is not instant revocation
-of every token. Review the project's token lifetime and session
-settings in
+location/search caches are separate per account and per tab.
+Lists also have a durable account-owned Supabase copy. These
+data are not loaded until authentication including 2FA passes.
+Sign-out clears the current tab cache while preserving saved
+account lists. Old unscoped demo caches are no longer read.
+Browser storage is not encrypted and this SPA does not claim
+HttpOnly-cookie protection; avoid shared browser profiles for
+sensitive data. **Sign out all devices** revokes refresh
+sessions. Previously issued access JWTs may remain valid until
+expiry; it is not instant revocation of every token. Review the
+project's token lifetime and session settings in
 [Supabase sessions](https://supabase.com/docs/guides/auth/sessions).
 
 This app does not issue recovery codes. If all authenticators
@@ -835,22 +875,23 @@ resolve a US ZIP code to an approximate area center. Failed
 lookups and denied GPS requests do not substitute a demo
 location.
 
-The store map and list automatically request nearby Kroger family
-stores through the authenticated `/api/kroger` endpoint using the
-selected coordinates and radius. This location-only request uses
-`queries: []`, so no shopping list or product search is required.
-It shows up to the nearest five Kroger family stores and requires
-`KROGER_CLIENT_ID` and `KROGER_CLIENT_SECRET` on the server.
-Loading, API failures with retry, and no nearby Kroger locations
-are shown explicitly. Selecting a live store card locates its
-marker on the map; its popup links to list comparison.
+The store map and list automatically request nearby Kroger
+family stores through the authenticated `/api/kroger` endpoint
+using the selected coordinates and radius. This location-only
+request uses `queries: []`, so no shopping list or product
+search is required. It shows up to the nearest five Kroger
+family stores and requires `KROGER_CLIENT_ID` and
+`KROGER_CLIENT_SECRET` on the server. Loading, API failures with
+retry, and no nearby Kroger locations are shown explicitly.
+Selecting a live store card locates its marker on the map; its
+popup links to list comparison.
 
 The map also filters catalog stores by the selected radius and
 calculates straight-line distances. Built-in store pins remain
 sample data in San Luis Obispo and are labeled separately from
 Kroger family stores in the popups. OpenStreetMap provides the
-basemap, not store discovery. Its attribution remains visible. Tiles
-require an internet connection and follow the
+basemap, not store discovery. Its attribution remains visible.
+Tiles require an internet connection and follow the
 [OpenStreetMap tile usage policy](https://operations.osmfoundation.org/policies/tiles/).
 
 ### Mock data and Supabase
@@ -862,8 +903,8 @@ The collections match the tables we expect later:
 feeds the 30 day chart.
 
 `src/data/api.js` reads only public catalog tables when both of
-these are set. Shopping lists and items stay local to the
-verified account and are never fetched by the catalog loader:
+these are set. Shopping lists use a separate authenticated
+account repository and are never fetched by the catalog loader:
 
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_PUBLISHABLE_KEY` (or `VITE_SUPABASE_ANON_KEY`)
@@ -881,7 +922,11 @@ rows. To connect a Supabase project locally:
    instead; do not rerun the fresh schema over existing tables.
    Apply the
    [security migration](./supabase/migrations/202610290002_mfa_access.sql)
-   afterward to enforce MFA and close legacy list access.
+   afterward to enforce MFA and close legacy list access. Then
+   apply
+   [`202611120001_account_saved_lists.sql`](./supabase/migrations/202611120001_account_saved_lists.sql)
+   to enable account-owned list saving. Both schema variants use
+   this separate table; the legacy list tables remain closed.
 3. Copy `packages/react-frontend/.env.example` to
    `packages/react-frontend/.env.local` and replace both
    placeholders with the Project URL and publishable (or legacy
@@ -894,12 +939,15 @@ rows. To connect a Supabase project locally:
 
 Do not commit `.env.local`, and never put a Supabase
 `service_role` key in a Vite frontend. The supplied policies are
-deliberately read-only and are appropriate only for the public
-course-demo data. Use Supabase Auth and user-specific RLS
-policies before storing real users' shopping lists.
+read-only for public catalog data. The saved-list migration
+supplies separate ownership and MFA policies for private
+shopping lists, following
+[Supabase row-level security](https://supabase.com/docs/guides/database/postgres/row-level-security).
 
-An empty Supabase table does not wipe the demo. A table replaces
-mock data after it has at least one row.
+Public catalog reads supplement the built-in products and store
+offers by ID. Empty successful reads remove obsolete remote rows
+and retain the built-ins. Account list reads have no demo
+fallback: new accounts are empty.
 
 ### Deploy on Vercel
 

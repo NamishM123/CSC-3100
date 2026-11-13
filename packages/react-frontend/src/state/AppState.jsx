@@ -2,6 +2,9 @@ import { useCallback, useEffect, useState } from "react";
 import { loadRemoteCatalog } from "../data/api.js";
 import NotificationState from "./NotificationState.jsx";
 import { useAuthSession } from "./useAuthSession.js";
+import { useSavedLists } from "../hooks/useSavedLists.js";
+import { listDocument } from "../lib/savedLists.js";
+import { mergeCatalog } from "../lib/catalog.js";
 import {
   loadAccountState,
   saveAccountState,
@@ -13,8 +16,6 @@ import {
   product_swaps,
   products,
   search_history,
-  shopping_list_items,
-  shopping_lists,
   store_chains,
   stores
 } from "../data/mock.js";
@@ -36,12 +37,12 @@ function mockCatalog() {
   };
 }
 
-function demoLists() {
+function defaultAccountState() {
   return {
-    lists: clone(shopping_lists),
-    items: clone(shopping_list_items),
-    activeListId: shopping_lists[0].id,
-    justAddedProductId: "prod-bananas",
+    lists: [],
+    items: [],
+    activeListId: null,
+    justAddedProductId: null,
     recentSearches: search_history.map((entry) => entry.term),
     listsDirty: false,
     includeMember: true,
@@ -59,7 +60,7 @@ function freshState() {
   return {
     location: null,
     catalog: mockCatalog(),
-    ...demoLists()
+    ...defaultAccountState()
   };
 }
 
@@ -70,6 +71,7 @@ function loadInitial(userId) {
     return {
       ...base,
       ...saved,
+      ...listDocument(saved),
       catalog: base.catalog
     };
   } catch {
@@ -78,27 +80,10 @@ function loadInitial(userId) {
 }
 
 function applyRemote(current, remote) {
-  const catalog = { ...current.catalog };
-  if (remote.store_chains?.length) {
-    catalog.store_chains = remote.store_chains;
-  }
-  if (remote.stores?.length) {
-    catalog.stores = remote.stores;
-    catalog.storesAreDemo = false;
-  }
-  if (remote.products?.length)
-    catalog.products = remote.products;
-  if (remote.prices?.length) {
-    catalog.prices = remote.prices;
-    catalog.pricesAreDemo = false;
-  }
-  if (remote.price_history?.length) {
-    catalog.price_history = remote.price_history;
-  }
-  if (remote.product_swaps?.length) {
-    catalog.product_swaps = remote.product_swaps;
-  }
-  return { ...current, catalog };
+  return {
+    ...current,
+    catalog: mergeCatalog(current.catalog, remote)
+  };
 }
 
 export function AppStateProvider({ children }) {
@@ -115,6 +100,8 @@ export function AppStateProvider({ children }) {
 function AccountStateProvider({ auth, children }) {
   const userId = auth.user?.id;
   const [state, setState] = useState(() => loadInitial(userId));
+  const [now, setNow] = useState(Date.now);
+  const listSync = useSavedLists(userId, state, setState);
   const refreshCatalog = useCallback(async () => {
     const remote = await loadRemoteCatalog();
     if (remote)
@@ -140,18 +127,38 @@ function AccountStateProvider({ auth, children }) {
     };
   }, [userId]);
 
+  useEffect(() => {
+    const refresh = () => {
+      setNow(Date.now());
+      void refreshCatalog();
+    };
+    window.addEventListener("focus", refresh);
+    const timer = setInterval(refresh, 60000);
+    const clock = setInterval(() => setNow(Date.now()), 30000);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      clearInterval(timer);
+      clearInterval(clock);
+    };
+  }, [refreshCatalog]);
+
   const api = {
     ...state,
     ...auth,
     refreshCatalog,
-    addRequestedItem(listId, query) {
+    listSync,
+    now,
+    addRequestedItem(listId, query, details = {}) {
       const clean = query.trim();
       if (!clean || clean.length > 120) return;
       setState((current) => {
+        if (!current.lists.some((list) => list.id === listId))
+          return current;
         const existing = current.items.find(
           (item) =>
             item.list_id === listId &&
-            item.query?.toLowerCase() === clean.toLowerCase()
+            item.query?.toLowerCase() === clean.toLowerCase() &&
+            item.name === details.name
         );
         return {
           ...current,
@@ -161,7 +168,14 @@ function AccountStateProvider({ auth, children }) {
                 item.id === existing.id
                   ? {
                       ...item,
-                      quantity: Math.min(99, item.quantity + 1),
+                      storeSelections: {
+                        ...item.storeSelections,
+                        ...details.storeSelections
+                      },
+                      quantity: Math.min(
+                        99,
+                        item.quantity + (details.quantity || 1)
+                      ),
                       checked: false
                     }
                   : item
@@ -173,7 +187,11 @@ function AccountStateProvider({ auth, children }) {
                   list_id: listId,
                   product_id: `request-${crypto.randomUUID()}`,
                   query: clean,
-                  quantity: 1,
+                  name: details.name,
+                  image_url: details.image_url,
+                  size_label: details.size_label,
+                  storeSelections: details.storeSelections,
+                  quantity: details.quantity || 1,
                   checked: false
                 }
               ]
@@ -203,10 +221,12 @@ function AccountStateProvider({ auth, children }) {
       }));
     },
     async signOut() {
+      if (listSync.ready) await listSync.flush();
       await auth.signOut();
       clearAccountState(sessionStorage, userId);
     },
     async signOutEverywhere() {
+      if (listSync.ready) await listSync.flush();
       await auth.signOutEverywhere();
       clearAccountState(sessionStorage, userId);
     },
@@ -246,11 +266,12 @@ function AccountStateProvider({ auth, children }) {
     },
     setActiveList(activeListId) {
       setState((current) => ({ ...current, activeListId }));
+      void refreshCatalog();
     },
     createList(name) {
       const clean = name.trim();
       if (!clean) return null;
-      const id = `list-${Date.now()}`;
+      const id = `list-${crypto.randomUUID()}`;
       setState((current) => ({
         ...current,
         listsDirty: true,
@@ -287,6 +308,16 @@ function AccountStateProvider({ auth, children }) {
     },
     addOrUpdateItem(listId, productId, quantity) {
       setState((current) => {
+        if (!current.lists.some((list) => list.id === listId))
+          return current;
+        const product = current.catalog.products.find(
+          (entry) => entry.id === productId
+        );
+        const details = {
+          name: product?.name,
+          image_url: product?.image_url,
+          size_label: product?.size_label
+        };
         const items = current.items.map((item) => ({
           ...item
         }));
@@ -296,13 +327,15 @@ function AccountStateProvider({ auth, children }) {
             item.product_id === productId
         );
         if (existing) {
+          Object.assign(existing, details);
           existing.quantity = quantity;
           existing.checked = false;
         } else {
           items.push({
-            id: `item-${Date.now()}`,
+            id: `item-${crypto.randomUUID()}`,
             list_id: listId,
             product_id: productId,
+            ...details,
             quantity,
             checked: false
           });
@@ -408,13 +441,6 @@ function AccountStateProvider({ auth, children }) {
     },
     setRoutePlan(routePlan) {
       setState((current) => ({ ...current, routePlan }));
-    },
-    resetDemo() {
-      setState((current) => ({
-        ...current,
-        ...demoLists(),
-        catalog: mockCatalog()
-      }));
     }
   };
 

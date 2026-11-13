@@ -3,7 +3,6 @@ import { Link, useNavigate } from "react-router-dom";
 import Screen from "../components/Screen.jsx";
 import Sheet from "../components/Sheet.jsx";
 import KrogerRecommendations from "../components/KrogerRecommendations.jsx";
-import { DEMO_NOW } from "../data/mock.js";
 import { compareList, lowestQuote } from "../lib/compare.js";
 import { cents, joinNames, money } from "../lib/format.js";
 import { useAppState } from "../state/useAppState.js";
@@ -31,22 +30,20 @@ export default function ShoppingList() {
     acceptedSwapIds: state.acceptedSwapIds,
     radiusMi: state.radiusMi,
     includeMember: state.includeMember,
-    now: DEMO_NOW
+    now: state.now
   });
 
-  function linePrice(item) {
-    const quote = lowestQuote({
+  function lineQuote(item) {
+    return lowestQuote({
       productId: item.product_id,
       prices: state.catalog.prices,
       stores: state.catalog.stores,
       radiusMi: state.radiusMi,
       includeMember: state.includeMember,
-      now: DEMO_NOW,
+      now: state.now,
       swaps: state.catalog.product_swaps,
       acceptedSwapIds: state.acceptedSwapIds
     });
-    if (!quote) return null;
-    return cents(quote.unit * item.quantity);
   }
 
   const singleLabel =
@@ -196,27 +193,33 @@ export default function ShoppingList() {
 
       {rows.length === 0 ? (
         <div className="empty">
-          <h2>This list is empty</h2>
+          <h2>
+            {list ? "This list is empty" : "No saved lists yet"}
+          </h2>
           <p>
-            Add an item above, or search for a product to add.
+            {list
+              ? "Add an item above, or search for a product to add."
+              : "Create your first list or search for products. Your lists save to your account automatically."}
           </p>
         </div>
       ) : (
         <div className="stack">
           {rows.map((item) => {
-            const product =
-              state.catalog.products.find(
-                (entry) => entry.id === item.product_id
-              ) ||
-              (item.query
-                ? {
-                    id: item.product_id,
-                    name: item.query,
-                    list_unit: "packages"
-                  }
-                : null);
-            if (!product) return null;
-            const total = linePrice(item);
+            const product = state.catalog.products.find(
+              (entry) => entry.id === item.product_id
+            ) || {
+              id: item.product_id,
+              name:
+                item.name ||
+                item.query ||
+                "Unavailable product",
+              image_url: item.image_url,
+              list_unit: item.size_label || "packages"
+            };
+            const quote = lineQuote(item);
+            const total = quote
+              ? cents(quote.unit * item.quantity)
+              : null;
             return (
               <div
                 key={item.id}
@@ -252,7 +255,10 @@ export default function ShoppingList() {
                 )}
                 <div className="list-item-details">
                   <div className="name-line">
-                    {item.query ? (
+                    {item.query ||
+                    !state.catalog.products.some(
+                      (entry) => entry.id === item.product_id
+                    ) ? (
                       <strong>{product.name}</strong>
                     ) : (
                       <Link to={`/product/${product.id}`}>
@@ -310,7 +316,11 @@ export default function ShoppingList() {
                       : money(total)}
                   </strong>
                   {!item.query ? (
-                    <span>lowest catalog price</span>
+                    <span>
+                      {quote
+                        ? `Lowest price at ${quote.store.name}`
+                        : "No current catalog offer"}
+                    </span>
                   ) : null}
                 </div>
               </div>
@@ -318,7 +328,9 @@ export default function ShoppingList() {
           })}
         </div>
       )}
-      <KrogerRecommendations items={rows} />
+      {list ? (
+        <KrogerRecommendations key={list.id} items={rows} />
+      ) : null}
       {editing && list ? (
         <button
           type="button"
