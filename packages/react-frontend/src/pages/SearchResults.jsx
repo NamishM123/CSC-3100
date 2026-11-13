@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Link,
   useNavigate,
@@ -39,6 +39,9 @@ export default function SearchResults() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const query = params.get("q") || "";
+  useEffect(() => {
+    rememberSearch(query);
+  }, [query, rememberSearch]);
   const [draft, setDraft] = useState(query);
   const [within, setWithin] = useState(false);
   const [dietOpen, setDietOpen] = useState(false);
@@ -54,7 +57,6 @@ export default function SearchResults() {
   function runSearch(term) {
     const clean = term.trim();
     if (!clean) return;
-    rememberSearch(clean);
     navigate(`/search?q=${encodeURIComponent(clean)}`);
   }
 
