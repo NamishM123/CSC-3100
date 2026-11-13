@@ -236,25 +236,25 @@ retailer stock failures say **Out of stock**. Advertisements
 within their sale dates and community reports less than seven
 days old can contribute clearly labeled estimates; they never
 become confirmed stock or populate the confirmed catalog route
-planner. Sample stores appear in an always-visible section
-before stores without comparable prices and do not influence
-real-store scores. Their automatic comparison units are chosen
-independently so real per-pound offers cannot hide sample
-per-item baskets. Explicit saved unit choices still apply. These
+planner. All stores, including built-in stores, appear in one
+comparison list and share the same coverage, price, distance,
+and automatic-unit calculations. Sample prices remain labeled as
+illustrative rather than verified live prices. Stores with no
+comparable prices remain visible below priced baskets. These
 proposed store lists are derived from your saved shopping list,
 not duplicate saved lists.
 
 Per-pound and per-item prices are compared separately. When
 sources offer different pricing units, **Comparison units** lets
 you choose a shared basis for each item; the automatic choice
-uses the unit priced by the most real stores. Unit preferences
-save to the existing list document without a new migration.
-Product names retain explicit type, percentage, brand, and
-package-size constraints. Multi-buy totals include the full
-bundle needed to cover the requested quantity, with extra
-purchased units shown; unknown CRV deposits are labeled as
-additional. An unpriced or incompatible line lowers coverage and
-never contributes a zero-cost item to a subtotal.
+uses the unit priced by the most stores. Unit preferences save
+to the existing list document without a new migration. Product
+names retain explicit type, percentage, brand, and package-size
+constraints. Multi-buy totals include the full bundle needed to
+cover the requested quantity, with extra purchased units shown;
+unknown CRV deposits are labeled as additional. An unpriced or
+incompatible line lowers coverage and never contributes a
+zero-cost item to a subtotal.
 
 Apply
 [`202611120001_account_saved_lists.sql`](./supabase/migrations/202611120001_account_saved_lists.sql)
