@@ -483,6 +483,62 @@ export function createOpenDataHandler(
     }
     try {
       const body = req.body;
+      if (body?.action === "comparisonReports") {
+        if (
+          !Array.isArray(body.storeIds) ||
+          !body.storeIds.length ||
+          body.storeIds.length > 4 ||
+          new Set(body.storeIds).size !== body.storeIds.length
+        )
+          throw fail(
+            400,
+            "Request one to four different mapped stores at a time."
+          );
+        body.storeIds.forEach(osmIdentity);
+        const stores = new Array(body.storeIds.length);
+        let index = 0;
+        // Two upstream requests at once, with at most two waves per function.
+        // One failed report feed must not erase another store's results.
+        await Promise.all(
+          [0, 1].map(async () => {
+            while (index < body.storeIds.length) {
+              const current = index++;
+              const storeId = body.storeIds[current];
+              try {
+                stores[current] = {
+                  storeId,
+                  ...(await client.prices(storeId))
+                };
+              } catch {
+                stores[current] = {
+                  storeId,
+                  offers: [],
+                  error:
+                    "Community prices could not be checked. Please retry."
+                };
+              }
+            }
+          })
+        );
+        const dietary =
+          Array.isArray(body.dietary) && body.dietary.length
+            ? await client.facts(
+                stores.flatMap((store) =>
+                  store.offers.map((offer) => offer.barcode)
+                )
+              )
+            : { facts: {}, limited: false };
+        return res.json({
+          stores: stores.map((store) => ({
+            ...store,
+            offers: store.offers.map((offer) => ({
+              ...offer,
+              dietary_facts: dietary.facts[offer.barcode]
+            }))
+          })),
+          dietaryLimited: dietary.limited
+        });
+      }
       if (body?.action === "weeklyAds") {
         if (body.storeId != null) {
           const store = weeklyAdStore(body.storeId);
