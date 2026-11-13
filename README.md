@@ -114,11 +114,13 @@ geocoding API at runtime.
 
 The shared directory combines these branches with Kroger, mapped
 stores, and the connected catalog. Duplicate physical locations
-become one marker. When a real store replaces a built-in sample
-of the same brand in the same city, its sample entry, prices,
-history, and swaps are removed from the active catalog.
-Nonconflicting samples and saved shopping requests remain
-available. Old store IDs resolve to the replacement entry.
+become one marker. A shared brand and city alone do not remove a
+built-in store: its sample prices remain available alongside
+other branches, with illustrative locations/prices labeled on
+the map, store cards, and detail pages. Only a matching physical
+address or known store ID replaces a sample entry and removes
+its sample prices, history, and swaps. Old store IDs resolve to
+the replacement entry. Saved shopping requests remain available.
 Confirm branch participation and purchase conditions on the
 original ad; an advertised price does not confirm stock or enter
 confirmed shopping-basket totals. Adding an advertised product
@@ -234,10 +236,13 @@ retailer stock failures say **Out of stock**. Advertisements
 within their sale dates and community reports less than seven
 days old can contribute clearly labeled estimates; they never
 become confirmed stock or populate the confirmed catalog route
-planner. Sample stores appear in a separate section and do not
-influence real-store scores. These proposed store lists are
-derived from your saved shopping list, not duplicate saved
-lists.
+planner. Sample stores appear in an always-visible section
+before stores without comparable prices and do not influence
+real-store scores. Their automatic comparison units are chosen
+independently so real per-pound offers cannot hide sample
+per-item baskets. Explicit saved unit choices still apply. These
+proposed store lists are derived from your saved shopping list,
+not duplicate saved lists.
 
 Per-pound and per-item prices are compared separately. When
 sources offer different pricing units, **Comparison units** lets

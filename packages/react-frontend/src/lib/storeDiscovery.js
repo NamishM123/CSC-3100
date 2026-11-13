@@ -66,18 +66,11 @@ export function samePhysicalStore(a, b) {
     (cityMatches(a, b) || (a.zip && a.zip === b.zip))
   )
     return true;
+  // A fictional sample coordinate cannot verify a real branch. Require the
+  // same address or a known ID before removing its illustrative catalog.
+  if ((a.source === "demo") !== (b.source === "demo"))
+    return false;
   return distance != null && distance < 0.15;
-}
-
-// A demo entry is a fictional city-level stand-in, so a real store of the
-// same brand in that city replaces it even when its invented address differs.
-export function replacesDemoStore(real, demo) {
-  return (
-    demo.source === "demo" &&
-    real.source !== "demo" &&
-    sameStoreBrand(real, demo) &&
-    cityMatches(real, demo)
-  );
 }
 
 export function reconcileStores(rows) {
@@ -93,10 +86,8 @@ export function reconcileStores(rows) {
   for (const row of [...rows].sort(
     (a, b) => priority(b) - priority(a)
   )) {
-    const existing = stores.find(
-      (store) =>
-        samePhysicalStore(store, row) ||
-        replacesDemoStore(store, row)
+    const existing = stores.find((store) =>
+      samePhysicalStore(store, row)
     );
     if (existing) {
       existing.alternate_ids = [

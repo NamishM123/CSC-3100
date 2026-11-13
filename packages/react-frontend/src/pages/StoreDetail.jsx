@@ -87,6 +87,12 @@ export default function StoreDetail() {
 
   return (
     <Screen title={store.name} backTo="/stores">
+      {store.source === "demo" ? (
+        <p className="fine" role="status">
+          Built-in sample store. This location, its prices, and
+          stock information are illustrative.
+        </p>
+      ) : null}
       <p className="meta">
         {miles(store.distance_mi)} | {store.hours_label}
       </p>

@@ -33,15 +33,17 @@ export default function StoreCard({
             .join(", ")}
         </p>
         <p className="muted">
-          {store.source === "kroger"
-            ? "Kroger family store"
-            : store.source === "weekly-ads"
-              ? "Weekly-ad prices · Stock unconfirmed"
-              : store.source === "openstreetmap"
-                ? "Community store · View reported prices"
-                : variant === "drive"
-                  ? `${miles(store.distance_mi)} | ${store.hours_label}`
-                  : `${store.hours_label} | prices ${age}`}
+          {store.source === "demo"
+            ? "Built-in sample store · Illustrative location and prices"
+            : store.source === "kroger"
+              ? "Kroger family store"
+              : store.source === "weekly-ads"
+                ? "Weekly-ad prices · Stock unconfirmed"
+                : store.source === "openstreetmap"
+                  ? "Community store · View reported prices"
+                  : variant === "drive"
+                    ? `${miles(store.distance_mi)} | ${store.hours_label}`
+                    : `${store.hours_label} | prices ${age}`}
         </p>
         <Link
           className="text-link store-items-link"
