@@ -30,6 +30,98 @@ const json = (data, status = 200) =>
     headers: { "Content-Type": "application/json" }
   });
 
+test("comparison reports bound mapped-store batches, preserve per-store failures, and enrich dietary facts", async () => {
+  let active = 0;
+  let peak = 0;
+  const calls = [];
+  const handler = createOpenDataHandler({
+    prices: async (id) => {
+      calls.push(id);
+      active++;
+      peak = Math.max(peak, active);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      active--;
+      if (id === "osm-node-2")
+        throw new Error("private upstream details");
+      return {
+        offers: [
+          {
+            name: "Example apple",
+            barcode: "123456789012",
+            price: 2
+          }
+        ],
+        limited: false
+      };
+    },
+    facts: async (codes) => {
+      assert.deepEqual([...new Set(codes)], ["123456789012"]);
+      return {
+        facts: { 123456789012: { labels: ["en:vegan"] } },
+        limited: true
+      };
+    }
+  });
+  const res = {
+    setHeader() {},
+    status(code) {
+      this.code = code;
+      return this;
+    },
+    json(value) {
+      this.value = value;
+      return this;
+    }
+  };
+  await handler(
+    {
+      method: "POST",
+      body: {
+        action: "comparisonReports",
+        storeIds: [
+          "osm-node-1",
+          "osm-node-2",
+          "osm-node-3",
+          "osm-node-4"
+        ],
+        dietary: ["Vegan"]
+      }
+    },
+    res
+  );
+  assert.equal(peak, 2);
+  assert.equal(res.value.stores.length, 4);
+  assert.equal(
+    res.value.stores[0].offers[0].dietary_facts.labels[0],
+    "en:vegan"
+  );
+  assert.equal(res.value.dietaryLimited, true);
+  assert.match(
+    res.value.stores[1].error,
+    /could not be checked/
+  );
+  assert.doesNotMatch(
+    res.value.stores[1].error,
+    /private upstream/
+  );
+  for (const storeIds of [
+    [],
+    ["osm-node-1", "osm-node-1"],
+    ["https://evil.example/"],
+    Array.from({ length: 5 }, (_, i) => `osm-node-${i}`)
+  ]) {
+    await handler(
+      {
+        method: "POST",
+        body: { action: "comparisonReports", storeIds }
+      },
+      res
+    );
+    assert.equal(res.code, 400);
+  }
+  assert.equal(calls.length, 4);
+});
+
 test("community stores validate inputs, preserve real locations, cache requests, and bound radius", async () => {
   const calls = [];
   const client = createOpenDataClient({

@@ -262,6 +262,17 @@ function AccountStateProvider({ auth, children }) {
         krogerPriceWeight
       }));
     },
+    setComparisonUnit(itemId, unit) {
+      if (!["", "item", "lb", "kg", "l"].includes(unit)) return;
+      setState((current) => ({
+        ...current,
+        items: current.items.map((item) =>
+          item.id === itemId
+            ? { ...item, comparisonUnit: unit || undefined }
+            : item
+        )
+      }));
+    },
     async signOut() {
       if (listSync.ready) await listSync.flush();
       await auth.signOut();

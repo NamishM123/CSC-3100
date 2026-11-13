@@ -17,7 +17,8 @@ export function listDocument(state = {}) {
         "size_label",
         "quantity",
         "checked",
-        "storeSelections"
+        "storeSelections",
+        "comparisonUnit"
       ];
       return Object.fromEntries(
         fields

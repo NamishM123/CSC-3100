@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Screen from "../components/Screen.jsx";
-import KrogerRecommendations from "../components/KrogerRecommendations.jsx";
+import StoreRecommendations from "../components/StoreRecommendations.jsx";
 import { priceClock } from "../lib/catalog.js";
 import { compareList } from "../lib/compare.js";
 import {
@@ -107,13 +107,13 @@ export default function Optimized() {
           </button>
         ) : null
       }>
-      <KrogerRecommendations
+      <StoreRecommendations
         key={list?.id || "empty"}
         items={rows}
       />
       {!rows.some((item) => item.query) ? (
         <>
-          <h2>Catalog comparison</h2>
+          <h2>Catalog route options</h2>
           <p className="meta">
             {countNoun(rows.length, "item")} | stores within{" "}
             {state.radiusMi} mi

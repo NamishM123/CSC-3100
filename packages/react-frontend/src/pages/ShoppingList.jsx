@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Screen from "../components/Screen.jsx";
 import Sheet from "../components/Sheet.jsx";
-import KrogerRecommendations from "../components/KrogerRecommendations.jsx";
+import StoreRecommendations from "../components/StoreRecommendations.jsx";
 import { compareList, lowestQuote } from "../lib/compare.js";
 import { cents, joinNames, money } from "../lib/format.js";
 import { useAppState } from "../state/useAppState.js";
@@ -66,7 +66,7 @@ export default function ShoppingList() {
       dock={
         rows.some((item) => item.query) ? (
           <Link className="btn primary" to="/list/optimize">
-            Compare nearby Kroger stores
+            Compare all nearby stores
           </Link>
         ) : rows.length ? (
           <>
@@ -146,7 +146,7 @@ export default function ShoppingList() {
             setRequestedItem("");
           }}>
           <label className="field">
-            <span>Add an item to compare at Kroger</span>
+            <span>Add an item to compare across stores</span>
             <input
               value={requestedItem}
               maxLength={120}
@@ -326,7 +326,7 @@ export default function ShoppingList() {
                   {!item.query ? (
                     <span>
                       {quote
-                        ? `Lowest price at ${quote.store.name}`
+                        ? `${quote.store.source === "demo" ? "Sample catalog price" : "Lowest catalog price"} at ${quote.store.name}`
                         : "No current catalog offer"}
                     </span>
                   ) : null}
@@ -338,7 +338,7 @@ export default function ShoppingList() {
       )}
       {list ? <DietaryNotice /> : null}
       {list ? (
-        <KrogerRecommendations key={list.id} items={rows} />
+        <StoreRecommendations key={list.id} items={rows} />
       ) : null}
       {editing && list ? (
         <button

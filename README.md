@@ -96,8 +96,8 @@ use fixed upstream hosts and validated coordinates or OSM
 identities. Deploy the new endpoint alongside the frontend. No
 database migration is needed. Run `npm run dev:local` for both
 APIs locally. Kroger map discovery now returns up to 200
-locations; SKU price comparisons remain limited to the nearest
-five stores.
+locations; list comparisons check the nearest group first and
+then query the other discovered retailer branches incrementally.
 
 ### Free weekly-ad collectors
 
@@ -191,26 +191,65 @@ database migration is needed. The unit tests exercise parser
 ambiguity, dates, caching, URL restrictions, partial failures,
 and real PDF text extraction without contacting retailers.
 
-### Kroger list recommendations
+### Shopping-list comparisons across stores
 
-In **Lists**, create a list and use **Add an item to compare at
-Kroger**. General requests such as `2% milk` compare matching
-brands; include a size or brand to narrow the request. Existing
-catalog list items also participate, with their requested size.
-Under **Nearby Kroger recommendations**, each store has a
-product selector for every list item. Choose the brand and
-package size you want, or leave the cheapest confirmed match.
+In **Lists**, create a list and use **Add an item to compare
+across stores**. General requests such as `2% milk` compare
+matching brands; include a size or brand to narrow the request.
+Existing catalog list items also participate, with their
+requested size. Under **Compare all nearby stores**, each store
+has a proposed list, including partial baskets. Expand it to see
+a product selector for every list item. Choose the brand and
+package size you want, or leave the cheapest comparable match.
 Edit the list to remove items or change quantities; check off
 purchased items to exclude them. These changes and product
 selections recalculate prices and scores immediately. Lists,
-per-store SKU choices, quantities, checked items, and price
-priority save automatically to the signed-in account in
-Supabase. New accounts start with no lists. Search shows
-built-in catalog products and live Kroger products; either can
-be added to an existing or new list. The built-in catalog
+per-store SKU choices, comparison units, quantities, checked
+items, and price priority save automatically to the signed-in
+account in Supabase. New accounts start with no lists. Search
+shows built-in catalog products and live Kroger products; either
+can be added to an existing or new list. The built-in catalog
 includes 21 pictured products assigned to sample stores.
 Built-in catalog offers remain illustrative and do not become
 live prices merely by being saved.
+
+Comparisons combine current catalog offers, Kroger retailer
+searches, the three weekly-ad collectors, and recent community
+price reports for all nearby stores available in the app.
+Retailer requests start with the nearest group, then check the
+other discovered Kroger branches individually. Lists longer than
+20 distinct searches are split into bounded requests. Community
+reports load in batches of up to four stores through the
+authenticated `comparisonReports` action, with at most two
+upstream price requests at once. Each source publishes results
+progressively; one failed store does not erase other baskets.
+Sources without structured prices, including image-only
+Spencer's flyers, remain visible with unpriced items and a link
+to the store's source details.
+
+Store cards show matched/total items, missing item names and
+reasons, stock confirmations, and a full or partial subtotal.
+Missing reports mean unknown availability, while explicit
+retailer stock failures say **Out of stock**. Advertisements
+within their sale dates and community reports less than seven
+days old can contribute clearly labeled estimates; they never
+become confirmed stock or populate the confirmed catalog route
+planner. Sample stores appear in a separate section and do not
+influence real-store scores. These proposed store lists are
+derived from your saved shopping list, not duplicate saved
+lists.
+
+Per-pound and per-item prices are compared separately. When
+sources offer different pricing units, **Comparison units** lets
+you choose a shared basis for each item; the automatic choice
+uses the unit priced by the most real stores. Unit preferences
+save to the existing list document without a new migration.
+Product names retain explicit type, percentage, brand, and
+package-size constraints. Multi-buy totals include the full
+bundle needed to cover the requested quantity, with extra
+purchased units shown; unknown CRV deposits are labeled as
+additional. An unpriced or incompatible line lowers coverage and
+never contributes a zero-cost item to a subtotal.
 
 Apply
 [`202611120001_account_saved_lists.sql`](./supabase/migrations/202611120001_account_saved_lists.sql)
@@ -232,13 +271,14 @@ pending saves before clearing this tab's account cache.
 
 Saved lists contain shopping intent and product identifiers,
 never price snapshots. Opening a list, returning to the app, and
-each four-minute interval trigger fresh Kroger requests. The
-existing two-minute server cache still applies. A saved SKU
-whose price changes contributes its new price and quantity to
-the current basket; an unavailable saved SKU stays unavailable
-rather than switching products. Catalog offers reload on
-sign-in, on list selection, on focus, and every minute while
-open; connected catalog updates also recalculate baskets.
+each four-minute interval trigger fresh source requests.
+Automatic refresh does not interrupt a source check already in
+progress. The existing two-minute server cache still applies. A
+saved SKU whose price changes contributes its new price and
+quantity to the current basket; an unavailable saved SKU stays
+unavailable rather than switching products. Catalog offers
+reload on sign-in, on list selection, on focus, and every minute
+while open; connected catalog updates also recalculate baskets.
 Built-in stores without a live retailer feed retain illustrative
 prices. Confirmed retailer price updates come from Kroger or the
 connected catalog. Community price reports on mapped store pages
@@ -252,25 +292,27 @@ list ranks ahead of partial baskets. The score is
 rounded to an integer. Coverage counts list lines, price score
 is the cheapest comparable basket divided by this store's
 comparable basket, and distance score is `1 / (1 + miles)`. For
-score comparisons only, missing lines use the highest confirmed
+score comparisons only, missing lines use the highest comparable
 price for that line among returned stores; if no store has it,
 coverage still penalizes the missing line. The displayed total
-always contains only confirmed available items and is labeled
-partial when needed. Quantities multiply package prices;
-different package sizes aren't silently converted to equivalent
-quantities.
+contains only the priced lines and is labeled estimated or
+partial when needed. Coverage counts priced lines, with
+confirmed stock reported separately. Quantities multiply
+selected units; different package sizes aren't silently
+converted to equivalent quantities.
 
 The existing fuzzy matcher handles spelling differences and
 aliases while retaining explicit percentage, type, and size
 constraints. Ambiguous typos require a product selection.
-Unconfirmed stock, unavailable prices, and results at least five
-minutes old don't count toward coverage. An unavailable selected
-product stays unavailable until you choose another product or
-clear the selection. Use **Refresh prices** to check again
-immediately; automatic refresh also runs when you return and
-every four minutes. Search failures are shown separately from
-empty product results; sample catalog prices never fill gaps in
-Kroger results.
+Unknown retailer stock, unavailable prices, and retailer results
+at least five minutes old do not count toward priced coverage.
+Valid advertisements and recent community reports count only as
+estimates. An unavailable selected product stays unavailable
+until you choose another product or clear the selection. Use
+**Refresh prices** to check again immediately; automatic refresh
+also runs when you return and every four minutes. Search
+failures are shown separately from empty product results; sample
+catalog prices never fill gaps in Kroger results.
 
 The server uses
 [Kroger's public APIs](https://www.postman.com/kroger/the-kroger-co-s-public-workspace/collection/ki6utqb/kroger-public-apis)
@@ -298,13 +340,15 @@ in `packages/express-backend/.env.local` and run
 Mocked integration tests cover the full API-to-ranking path;
 live verification requires the deployment's real credentials.
 
-Search checks the nearest five returned Kroger family stores
-within 1–100 straight-line miles of the selected coordinates
-(the ZIP center when using ZIP entry), for up to 20 distinct
-item requests. Each search retrieves up to 100 products per
-search phrase; limits and partial failures are visible. A
-two-minute server cache and bounded concurrency reduce API
-requests. Retailer prices and stock can change before checkout.
+Each retailer search checks the nearest five returned Kroger
+family stores within 1–100 straight-line miles of the selected
+coordinates (the ZIP center when using ZIP entry), for up to 20
+distinct item requests. The list comparison then checks
+additional discovered branches individually and batches longer
+lists. Each search retrieves up to 100 products per search
+phrase; limits and partial failures are visible. A two-minute
+server cache and bounded concurrency reduce API requests.
+Retailer prices and stock can change before checkout.
 
 For the app plus the local background notification server, use
 `npm run dev:local` instead. This starts both servers; leave
