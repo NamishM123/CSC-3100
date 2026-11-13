@@ -36,6 +36,20 @@ export function authRedirectUrl(origin, destination) {
   return url.href;
 }
 
+export async function resendConfirmationEmail(
+  client,
+  { email, origin, destination }
+) {
+  const { error } = await client.auth.resend({
+    type: "signup",
+    email: email.trim(),
+    options: {
+      emailRedirectTo: authRedirectUrl(origin, destination)
+    }
+  });
+  if (error) throw error;
+}
+
 export function authErrorMessage(error) {
   switch (error?.code) {
     case "mfa_verification_failed":
@@ -54,6 +68,8 @@ export function authErrorMessage(error) {
       return "An account already exists. Try signing in.";
     case "signup_disabled":
       return "Account creation is currently unavailable.";
+    case "email_address_not_authorized":
+      return "Verification emails are currently unavailable for this address. Please contact support.";
     case "provider_disabled":
       return "Google sign-in is not available yet. Please use email and password.";
     case "over_request_rate_limit":

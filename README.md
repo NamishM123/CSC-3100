@@ -292,9 +292,25 @@ Set `VITE_SUPABASE_URL` and either
 `packages/react-frontend/.env.local`. Restart Vite after
 changing these values. Email/password sign-in and signup use
 Supabase Auth. Signup stores the name as user metadata and waits
-for email confirmation when the project requires it. Sessions
-persist across reloads; sign-out clears the current browser
-session.
+for email confirmation when the project requires it. Successful
+email/password signup shows a **Verification email sent** popup
+with **Back to login** and **Resend verification email**
+actions. Resending has a 60-second cooldown and reports delivery
+errors. Returning to login preserves the email and requested app
+page. Google signup continues through its existing OAuth flow.
+Sessions persist across reloads; sign-out clears the current
+browser session.
+
+In Supabase **Authentication > Sign In / Providers > Email**,
+keep **Confirm email** enabled. Supabase sends the verification
+email as part of `auth.signUp`; the app uses `auth.resend` only
+when the user requests another email. Configure a custom SMTP
+provider under Authentication email settings to deliver to
+addresses outside the project's team. Supabase's default mail
+service restricts recipients and rate-limits delivery. See
+[Supabase SMTP setup](https://supabase.com/docs/guides/auth/auth-smtp).
+Keep the confirmation email template's `{{ .ConfirmationURL }}`
+link so the address is verified before returning to the app.
 
 For Google login, enable Google in Supabase Authentication's
 provider settings and enter a Google OAuth web client ID and
@@ -368,7 +384,7 @@ sequenceDiagram
             Auth-->>Shopper: Send confirmation email
             Auth-->>SDK: User with no active session
             SDK-->>FE: data.session is null
-            FE-->>Shopper: Show check-email message
+            FE-->>Shopper: Show verification-email popup; offer return to login and resend
             Shopper->>Auth: Follow confirmation link
             Auth->>DB: Mark email confirmed
             Auth-->>FE: Redirect to /sign-in for callback / sign-in

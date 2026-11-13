@@ -11,7 +11,8 @@ import {
 import {
   authErrorMessage,
   authRedirectUrl,
-  passwordValidationError
+  passwordValidationError,
+  resendConfirmationEmail
 } from "../lib/auth.js";
 import { readMfaSession, verifyTotp } from "../lib/mfa.js";
 
@@ -155,6 +156,13 @@ export function useAuthSession() {
       );
       if (error) throw error;
       return data;
+    },
+    async resendVerificationEmail({ email, destination }) {
+      await resendConfirmationEmail(requireClient(), {
+        email,
+        origin: window.location.origin,
+        destination
+      });
     },
     async signInWithGoogle(destination) {
       requireClient();
