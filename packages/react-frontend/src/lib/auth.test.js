@@ -1,11 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { createClient } from "@supabase/supabase-js";
 import {
   appUser,
   authCallbackError,
   authErrorMessage,
   authRedirectUrl,
-  passwordValidationError
+  passwordValidationError,
+  resendConfirmationEmail
 } from "./auth.js";
 import { safeDest } from "./format.js";
 
@@ -93,4 +95,71 @@ test("confirmation and OAuth failures produce actionable errors", () => {
     /cancelled/
   );
   assert.equal(authCallbackError("?code=valid-code", ""), "");
+});
+
+function emailClient(fetch) {
+  return createClient(
+    "https://auth.example",
+    "public-test-key",
+    {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false
+      },
+      global: { fetch }
+    }
+  );
+}
+
+test("verification resend reaches Auth with the signup type and safe login callback", async () => {
+  for (const destination of ["/list", "https://evil.example"]) {
+    let requests = 0;
+    const client = emailClient(async (url, options) => {
+      requests += 1;
+      const target = new URL(url);
+      assert.equal(target.pathname, "/auth/v1/resend");
+      assert.equal(options.method, "POST");
+      assert.equal(
+        target.searchParams.get("redirect_to"),
+        destination === "/list"
+          ? "https://pantry.example/sign-in?next=%2Flist"
+          : "https://pantry.example/sign-in"
+      );
+      const body = JSON.parse(options.body);
+      assert.equal(body.type, "signup");
+      assert.equal(body.email, "shopper@example.com");
+      return Response.json({});
+    });
+    await resendConfirmationEmail(client, {
+      email: " shopper@example.com ",
+      origin: "https://pantry.example",
+      destination
+    });
+    assert.equal(requests, 1);
+  }
+});
+
+test("email delivery and rate-limit failures reject instead of reporting success", async () => {
+  for (const [status, code] of [
+    [429, "over_email_send_rate_limit"],
+    [400, "email_address_not_authorized"]
+  ]) {
+    const client = emailClient(async () =>
+      Response.json(
+        { code, msg: "Email could not be sent" },
+        {
+          status,
+          headers: { "X-Supabase-Api-Version": "2024-01-01" }
+        }
+      )
+    );
+    await assert.rejects(
+      resendConfirmationEmail(client, {
+        email: "shopper@example.com",
+        origin: "https://pantry.example"
+      }),
+      { code }
+    );
+  }
 });

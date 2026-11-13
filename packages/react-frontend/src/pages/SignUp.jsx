@@ -1,7 +1,13 @@
 import { useState } from "react";
-import { Link, Navigate, useLocation } from "react-router-dom";
+import {
+  Link,
+  Navigate,
+  useLocation,
+  useNavigate
+} from "react-router-dom";
 import Screen from "../components/Screen.jsx";
 import AuthLoading from "../components/AuthLoading.jsx";
+import EmailVerificationDialog from "../components/EmailVerificationDialog.jsx";
 import { useAppState } from "../state/useAppState.js";
 import { safeDest } from "../lib/format.js";
 import {
@@ -17,15 +23,17 @@ export default function SignUp() {
     authLoading,
     hasSession,
     signUp,
+    resendVerificationEmail,
     signInWithGoogle
   } = useAppState();
   const route = useLocation();
+  const navigate = useNavigate();
   const destination = safeDest(route.state?.from);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [confirmation, setConfirmation] = useState(false);
+  const [confirmation, setConfirmation] = useState("");
   const [pending, setPending] = useState("");
 
   if (authLoading) return <AuthLoading />;
@@ -73,8 +81,7 @@ export default function SignUp() {
         destination
       });
       if (!data.session) {
-        setConfirmation(true);
-        setPassword("");
+        setConfirmation(email.trim());
       }
     } catch (error) {
       setError(authErrorMessage(error));
@@ -96,6 +103,13 @@ export default function SignUp() {
     }
   }
 
+  function backToLogin() {
+    navigate("/sign-in", {
+      replace: true,
+      state: { from: destination, email: confirmation }
+    });
+  }
+
   return (
     <Screen title="Create account" chrome={false}>
       <div className="auth">
@@ -108,11 +122,22 @@ export default function SignUp() {
         </div>
         <div className="auth-panel">
           {confirmation ? (
-            <p className="lede" role="status">
-              Check your email for a confirmation link, then
-              sign in. If you already have an account, try
-              signing in.
-            </p>
+            <>
+              <p className="lede" role="status">
+                Check your inbox to verify your email before
+                signing in.
+              </p>
+              <EmailVerificationDialog
+                email={confirmation}
+                onBackToLogin={backToLogin}
+                onResend={() =>
+                  resendVerificationEmail({
+                    email: confirmation,
+                    destination
+                  })
+                }
+              />
+            </>
           ) : (
             <form className="form" onSubmit={onSubmit}>
               <label className="field">
@@ -178,24 +203,28 @@ export default function SignUp() {
               {error}
             </p>
           ) : null}
-          <div className="actions">
-            <button
-              className="btn ghost"
-              type="button"
-              disabled={Boolean(pending)}
-              aria-busy={pending === "google"}
-              onClick={onGoogleSignIn}>
-              {pending === "google"
-                ? "Connecting to Google..."
-                : "Continue with Google"}
-            </button>
-          </div>
+          {!confirmation ? (
+            <div className="actions">
+              <button
+                className="btn ghost"
+                type="button"
+                disabled={Boolean(pending)}
+                aria-busy={pending === "google"}
+                onClick={onGoogleSignIn}>
+                {pending === "google"
+                  ? "Connecting to Google..."
+                  : "Continue with Google"}
+              </button>
+            </div>
+          ) : null}
           <p className="center">
             <Link
               className="text-link"
               to="/sign-in"
               state={{ from: destination }}>
-              Already have an account? Sign in
+              {confirmation
+                ? "Back to login"
+                : "Already have an account? Sign in"}
             </Link>
           </p>
         </div>

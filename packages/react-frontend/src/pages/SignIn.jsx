@@ -28,7 +28,9 @@ export default function SignIn() {
     route.state?.from ||
       new URLSearchParams(route.search).get("next")
   );
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(
+    () => route.state?.email || ""
+  );
   const [password, setPassword] = useState("");
   const [error, setError] = useState(() =>
     authCallbackError(route.search, window.location.hash)
