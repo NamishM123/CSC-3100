@@ -7,7 +7,7 @@ import {
   authErrorMessage,
   authRedirectUrl,
   passwordValidationError,
-  resendConfirmationEmail
+  createPasswordAccount
 } from "./auth.js";
 import { safeDest } from "./format.js";
 
@@ -26,6 +26,8 @@ test("auth redirects retain internal destinations and reject external URLs", () 
     "https://evil.example",
     "/sign-in",
     "/sign-up",
+    "/account-security",
+    "/account-security?next=/list",
     "/location"
   ]) {
     assert.equal(safeDest(value), null);
@@ -81,10 +83,10 @@ test("authenticated profiles use Supabase identity and provider metadata", () =>
   );
 });
 
-test("confirmation and OAuth failures produce actionable errors", () => {
+test("legacy account and OAuth failures produce actionable errors", () => {
   assert.match(
     authErrorMessage({ code: "email_not_confirmed" }),
-    /Confirm your email/
+    /contact support/
   );
   assert.match(
     authCallbackError("?error_code=otp_expired", ""),
@@ -97,7 +99,7 @@ test("confirmation and OAuth failures produce actionable errors", () => {
   assert.equal(authCallbackError("?code=valid-code", ""), "");
 });
 
-function emailClient(fetch) {
+function authClient(fetch) {
   return createClient(
     "https://auth.example",
     "public-test-key",
@@ -112,54 +114,114 @@ function emailClient(fetch) {
   );
 }
 
-test("verification resend reaches Auth with the signup type and safe login callback", async () => {
-  for (const destination of ["/list", "https://evil.example"]) {
+const signupDetails = {
+  name: " Shopper ",
+  email: " shopper@example.com ",
+  password: "a long unique passphrase"
+};
+const passwordOnlySettings = async () => ({
+  mailer_autoconfirm: true
+});
+
+test("password signup returns a session without requesting verification mail", async () => {
+  let requests = 0;
+  const client = authClient(async (url, options) => {
+    requests += 1;
+    const target = new URL(url);
+    assert.equal(target.pathname, "/auth/v1/signup");
+    assert.equal(target.searchParams.has("redirect_to"), false);
+    assert.equal(options.method, "POST");
+    const body = JSON.parse(options.body);
+    assert.equal(body.email, "shopper@example.com");
+    assert.equal(body.password, signupDetails.password);
+    assert.deepEqual(body.data, { name: "Shopper" });
+    return Response.json({
+      access_token: "test-access-token",
+      refresh_token: "test-refresh-token",
+      expires_in: 3600,
+      token_type: "bearer",
+      user: { id: "new-shopper", email: "shopper@example.com" }
+    });
+  });
+  const data = await createPasswordAccount(
+    client,
+    passwordOnlySettings,
+    signupDetails
+  );
+  assert.equal(data.session.user.id, "new-shopper");
+  assert.equal(requests, 1);
+});
+
+test("signup does not trigger mail when confirmation is enabled or settings are unknown", async () => {
+  for (const settings of [{ mailer_autoconfirm: false }, {}]) {
     let requests = 0;
-    const client = emailClient(async (url, options) => {
+    const client = authClient(async () => {
       requests += 1;
-      const target = new URL(url);
-      assert.equal(target.pathname, "/auth/v1/resend");
-      assert.equal(options.method, "POST");
-      assert.equal(
-        target.searchParams.get("redirect_to"),
-        destination === "/list"
-          ? "https://pantry.example/sign-in?next=%2Flist"
-          : "https://pantry.example/sign-in"
-      );
-      const body = JSON.parse(options.body);
-      assert.equal(body.type, "signup");
-      assert.equal(body.email, "shopper@example.com");
       return Response.json({});
     });
-    await resendConfirmationEmail(client, {
-      email: " shopper@example.com ",
-      origin: "https://pantry.example",
-      destination
-    });
-    assert.equal(requests, 1);
+    await assert.rejects(
+      createPasswordAccount(
+        client,
+        async () => settings,
+        signupDetails
+      ),
+      /temporarily unavailable/
+    );
+    assert.equal(requests, 0);
   }
 });
 
-test("email delivery and rate-limit failures reject instead of reporting success", async () => {
-  for (const [status, code] of [
-    [429, "over_email_send_rate_limit"],
-    [400, "email_address_not_authorized"]
-  ]) {
-    const client = emailClient(async () =>
-      Response.json(
-        { code, msg: "Email could not be sent" },
-        {
-          status,
-          headers: { "X-Supabase-Api-Version": "2024-01-01" }
-        }
-      )
-    );
-    await assert.rejects(
-      resendConfirmationEmail(client, {
-        email: "shopper@example.com",
-        origin: "https://pantry.example"
-      }),
-      { code }
-    );
-  }
+test("signup stops before creating an account when settings cannot be fetched", async () => {
+  let requests = 0;
+  const client = authClient(async () => {
+    requests += 1;
+    return Response.json({});
+  });
+  const failure = new TypeError("Network unavailable");
+  await assert.rejects(
+    createPasswordAccount(
+      client,
+      async () => {
+        throw failure;
+      },
+      signupDetails
+    ),
+    (error) => error === failure
+  );
+  assert.equal(requests, 0);
+});
+
+test("signup errors and a response without a session never appear successful", async () => {
+  const code = "user_already_exists";
+  const client = authClient(async () =>
+    Response.json(
+      { code, msg: "User already registered" },
+      {
+        status: 422,
+        headers: { "X-Supabase-Api-Version": "2024-01-01" }
+      }
+    )
+  );
+  await assert.rejects(
+    createPasswordAccount(
+      client,
+      passwordOnlySettings,
+      signupDetails
+    ),
+    { code }
+  );
+  const unconfirmedClient = authClient(async () =>
+    Response.json({
+      id: "unconfirmed-shopper",
+      email: "shopper@example.com"
+    })
+  );
+  await assert.rejects(
+    createPasswordAccount(
+      unconfirmedClient,
+      passwordOnlySettings,
+      signupDetails
+    ),
+    /try signing in/
+  );
 });

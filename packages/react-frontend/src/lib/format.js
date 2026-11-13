@@ -100,6 +100,7 @@ export function safeDest(value) {
     return null;
   if (value.startsWith("/sign-in")) return null;
   if (value.startsWith("/sign-up")) return null;
+  if (value.startsWith("/account-security")) return null;
   if (value.startsWith("/location")) return null;
   return value;
 }

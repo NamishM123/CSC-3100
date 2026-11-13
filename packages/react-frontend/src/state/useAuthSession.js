@@ -6,13 +6,13 @@ import {
 } from "react";
 import {
   getSupabaseClient,
-  googleSignInEnabled
+  googleSignInEnabled,
+  readAuthSettings
 } from "../lib/supabase.js";
 import {
   authErrorMessage,
   authRedirectUrl,
-  passwordValidationError,
-  resendConfirmationEmail
+  createPasswordAccount
 } from "../lib/auth.js";
 import { readMfaSession, verifyTotp } from "../lib/mfa.js";
 
@@ -138,31 +138,12 @@ export function useAuthSession() {
         });
       if (error) throw error;
     },
-    async signUp({ name, email, password, destination }) {
-      const validation = passwordValidationError(password);
-      if (validation) throw new Error(validation);
-      const { data, error } = await requireClient().auth.signUp(
-        {
-          email: email.trim(),
-          password,
-          options: {
-            data: { name: name.trim() },
-            emailRedirectTo: authRedirectUrl(
-              window.location.origin,
-              destination
-            )
-          }
-        }
+    async signUp(details) {
+      return createPasswordAccount(
+        requireClient(),
+        readAuthSettings,
+        details
       );
-      if (error) throw error;
-      return data;
-    },
-    async resendVerificationEmail({ email, destination }) {
-      await resendConfirmationEmail(requireClient(), {
-        email,
-        origin: window.location.origin,
-        destination
-      });
     },
     async signInWithGoogle(destination) {
       requireClient();

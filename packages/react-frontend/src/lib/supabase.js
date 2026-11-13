@@ -40,8 +40,12 @@ export function getSupabaseClient() {
   return client;
 }
 
-export async function googleSignInEnabled() {
-  if (!supabaseConfigured()) return false;
+export async function readAuthSettings() {
+  if (!supabaseConfigured()) {
+    throw new Error(
+      "Sign-in is currently unavailable. Please try again later."
+    );
+  }
   const response = await fetch(
     `${url.replace(/\/$/, "")}/auth/v1/settings`,
     {
@@ -54,6 +58,11 @@ export async function googleSignInEnabled() {
       "Unable to check sign-in options. Try again."
     );
   }
-  const settings = await response.json();
+  return response.json();
+}
+
+export async function googleSignInEnabled() {
+  if (!supabaseConfigured()) return false;
+  const settings = await readAuthSettings();
   return settings.external?.google === true;
 }
