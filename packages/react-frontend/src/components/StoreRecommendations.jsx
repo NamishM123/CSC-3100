@@ -299,8 +299,6 @@ export default function StoreRecommendations({ items }) {
     dietary: state.dietary,
     now: Math.max(clock, state.now || 0)
   });
-  const real = ranked.filter((row) => !row.demo);
-  const samples = ranked.filter((row) => row.demo);
   const units = ranked[0]?.lines || [];
   const pricePercent = Math.round(
     (state.krogerPriceWeight ?? 0.7) * 100
@@ -511,7 +509,7 @@ export default function StoreRecommendations({ items }) {
           </div>
         )
       )}
-      {real
+      {ranked
         .filter((row) => row.matched > 0)
         .map((row, index) => (
           <StoreBasket
@@ -531,33 +529,12 @@ export default function StoreRecommendations({ items }) {
           Try a wider radius.
         </p>
       ) : null}
-      {samples.length ? (
-        <section
-          className="stack"
-          aria-label="Built-in sample store comparisons">
-          <h3>Built-in sample stores ({samples.length})</h3>
-          <p className="fine">
-            These built-in prices are illustrative. Their scores
-            are calculated separately and never influence
-            real-store recommendations.
-          </p>
-          <div className="stack">
-            {samples.map((row) => (
-              <StoreBasket
-                key={row.store.id}
-                row={row}
-                onSelect={state.setStoreProduct}
-              />
-            ))}
-          </div>
-        </section>
-      ) : null}
-      {real.some((row) => !row.matched) ? (
+      {ranked.some((row) => !row.matched) ? (
         <section
           className="stack"
           aria-label="Stores without comparable prices">
           <h3>Stores without comparable prices</h3>
-          {real
+          {ranked
             .filter((row) => !row.matched)
             .map((row) => (
               <StoreBasket

@@ -298,28 +298,35 @@ test("saved advertisement choices survive price/date refreshes but unavailable o
   assert.match(row.lines[0].status, /dietary/);
 });
 
-test("sample data never changes real-store scores or the automatic unit basis", () => {
+test("all stores share one price score and ranking while retaining price provenance", () => {
   const real = store("real", [ad("apple", 5, { unit: "lb" })]);
-  const baseline = rank([real], [item("apple")])[0].score;
   const rows = rank(
     [
       store(
         "sample",
-        [product("apple", 0.01, { evidence: "demo" })],
+        [
+          product("apple", 1, {
+            evidence: "demo",
+            pricing_unit: "lb"
+          })
+        ],
         { source: "demo" }
       ),
       real
     ],
     [item("apple")]
   );
-  assert.equal(rows[0].store.id, "real");
-  assert.equal(rows[0].score, baseline);
+  assert.equal(rows[0].store.id, "sample");
+  assert.equal(rows[0].score, 100);
   assert.equal(rows[0].lines[0].unit, "lb");
   const sample = rows.find((row) => row.demo);
-  assert.equal(sample.lines[0].unit, "item");
+  assert.equal(sample.lines[0].unit, "lb");
   assert.equal(sample.matched, 1);
-  assert.equal(sample.total, 0.01);
+  assert.equal(sample.total, 1);
   assert.equal(sample.score, 100);
+  assert.equal(sample.confirmed, 0);
+  assert.match(sample.lines[0].status, /Sample price/);
+  assert.equal(rows.find((row) => !row.demo).score, 20);
 });
 
 test("confirmed retailer scoring remains compatible with saved Kroger recommendations and strict size matching", () => {

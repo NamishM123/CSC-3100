@@ -429,21 +429,12 @@ export function rankStoreBaskets({
         "item";
       return { unit, units: [...new Set([unit, ...units])] };
     });
-  const real = prepared.filter(
-    (row) => row.store.source !== "demo"
-  );
-  const samples = prepared.filter(
-    (row) => row.store.source === "demo"
-  );
-  const bases = basesFor(real.length ? real : samples);
-  const sampleBases = basesFor(samples);
+  const bases = basesFor(prepared);
   const rows = prepared.map(({ store, lines }) => {
     let total = 0;
     let confirmed = 0;
     const completeLines = lines.map((line, index) => {
-      const basis = (
-        store.source === "demo" ? sampleBases : bases
-      )[index];
+      const basis = bases[index];
       const usable = line.usable
         .filter(
           (p) => (p.pricing_unit || "item") === basis.unit
@@ -573,19 +564,9 @@ export function rankStoreBaskets({
       Number.isFinite(priceWeight) ? priceWeight : 0.7
     )
   );
-  scoreRows(
-    rows.filter((row) => !row.demo),
-    active,
-    weight
-  );
-  scoreRows(
-    rows.filter((row) => row.demo),
-    active,
-    weight
-  );
+  scoreRows(rows, active, weight);
   return rows.sort(
     (a, b) =>
-      Number(a.demo) - Number(b.demo) ||
       Number(b.complete) - Number(a.complete) ||
       b.score - a.score ||
       b.matched - a.matched ||
