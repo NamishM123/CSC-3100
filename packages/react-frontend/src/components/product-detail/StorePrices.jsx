@@ -15,7 +15,9 @@ export default function StorePrices({
         (row) => !isStale(row.updated_at, priceClock(row))
       )
     : rows;
-  const cheapestId = visible[0]?.id;
+  const cheapestId = visible.find(
+    (row) => row.price != null
+  )?.id;
 
   return (
     <div className="product-prices">

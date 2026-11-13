@@ -1,4 +1,15 @@
 import * as sample from "../data/mock.js";
+import { distanceMiles } from "./geo.js";
+
+export function catalogForLocation(catalog, place) {
+  return {
+    ...catalog,
+    stores: catalog.stores.map((store) => ({
+      ...store,
+      distance_mi: distanceMiles(place, store) ?? Infinity
+    }))
+  };
+}
 
 export function priceClock(row, now = Date.now()) {
   return row?.source === "demo" ? sample.DEMO_NOW : now;

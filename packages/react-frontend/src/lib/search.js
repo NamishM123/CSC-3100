@@ -189,45 +189,7 @@ export function findProduct(products, rawQuery) {
   };
 }
 
-export function dietaryStatus(product, filters) {
-  const selected = filters || [];
-  if (!product || selected.length === 0) {
-    return {
-      ok: true,
-      unverified: false,
-      conflicts: [],
-      missing: []
-    };
-  }
-  const conflicts = selected.filter((filter) =>
-    (product.dietary_conflicts || []).includes(filter)
-  );
-  if (conflicts.length) {
-    return {
-      ok: false,
-      unverified: false,
-      conflicts,
-      missing: []
-    };
-  }
-  const missing = selected.filter(
-    (filter) => !(product.dietary || []).includes(filter)
-  );
-  if (missing.length) {
-    return {
-      ok: true,
-      unverified: true,
-      conflicts: [],
-      missing
-    };
-  }
-  return {
-    ok: true,
-    unverified: false,
-    conflicts: [],
-    missing: []
-  };
-}
+export { dietaryStatus } from "./dietary.js";
 
 export function productMatchesQuery(product, rawQuery) {
   if (!String(rawQuery ?? "").trim()) return true;

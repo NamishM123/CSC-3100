@@ -1,11 +1,13 @@
 import express from "express";
 import { requireAuth } from "./auth.js";
 import { createKrogerHandler } from "./kroger.js";
+import { createOpenDataHandler } from "./openData.js";
 
 export function createApp({
   auth,
   notifications,
-  kroger
+  kroger,
+  openData
 } = {}) {
   const app = express();
   app.disable("x-powered-by");
@@ -34,6 +36,11 @@ export function createApp({
     "/api/kroger",
     requireAuth(auth),
     createKrogerHandler(kroger)
+  );
+  app.post(
+    "/api/open-data",
+    requireAuth(auth),
+    createOpenDataHandler(openData)
   );
   if (notifications)
     app.all(

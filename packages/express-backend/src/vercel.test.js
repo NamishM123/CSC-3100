@@ -8,6 +8,11 @@ test("both Vercel entry points start without module auto-detection and return JS
     new URL(
       "../../react-frontend/api/kroger.js",
       import.meta.url
+    ).href,
+    new URL("../../../api/open-data.js", import.meta.url).href,
+    new URL(
+      "../../react-frontend/api/open-data.js",
+      import.meta.url
     ).href
   ];
   const output = execFileSync(

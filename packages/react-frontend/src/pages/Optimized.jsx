@@ -13,6 +13,7 @@ import {
   money
 } from "../lib/format.js";
 import { useAppState } from "../state/useAppState.js";
+import { dietaryStatus } from "../lib/dietary.js";
 
 export default function Optimized() {
   const state = useAppState();
@@ -34,11 +35,14 @@ export default function Optimized() {
     acceptedSwapIds: state.acceptedSwapIds,
     radiusMi: state.radiusMi,
     includeMember: state.includeMember,
+    dietary: state.dietary,
     now: state.now
   });
   const [selected, setSelected] = useState("split");
-  const swap = state.catalog.product_swaps.find((entry) =>
-    rows.some((item) => item.product_id === entry.product_id)
+  const swap = state.catalog.product_swaps.find(
+    (entry) =>
+      dietaryStatus(entry, state.dietary).ok &&
+      rows.some((item) => item.product_id === entry.product_id)
   );
   const swapItem = swap
     ? rows.find((item) => item.product_id === swap.product_id)

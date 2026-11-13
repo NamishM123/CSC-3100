@@ -31,9 +31,11 @@ export default function StoreCard({
         <p className="muted">
           {store.source === "kroger"
             ? "Kroger family store"
-            : variant === "drive"
-              ? `${miles(store.distance_mi)} | ${store.hours_label}`
-              : `${store.hours_label} | prices ${age}`}
+            : store.source === "openstreetmap"
+              ? "Community store · View reported prices"
+              : variant === "drive"
+                ? `${miles(store.distance_mi)} | ${store.hours_label}`
+                : `${store.hours_label} | prices ${age}`}
         </p>
         <Link
           className="text-link store-items-link"

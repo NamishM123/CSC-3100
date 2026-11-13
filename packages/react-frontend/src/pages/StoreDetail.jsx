@@ -6,15 +6,21 @@ import {
 } from "react-router-dom";
 import Screen from "../components/Screen.jsx";
 import KrogerStoreDetail from "../components/KrogerStoreDetail.jsx";
+import CommunityStoreDetail from "../components/CommunityStoreDetail.jsx";
+import DietaryNotice from "../components/DietaryNotice.jsx";
 import { priceClock } from "../lib/catalog.js";
 import { ageLabel, miles, money } from "../lib/format.js";
-import { productMatchesQuery } from "../lib/search.js";
+import {
+  productMatchesQuery,
+  dietaryStatus
+} from "../lib/search.js";
+import { listedUnit } from "../lib/compare.js";
 import { useAppState } from "../state/useAppState.js";
 
 export default function StoreDetail() {
   const { storeId } = useParams();
   const [params] = useSearchParams();
-  const { catalog } = useAppState();
+  const { catalog, dietary, includeMember } = useAppState();
   const [query, setQuery] = useState("");
   const store = catalog.stores.find(
     (entry) => entry.id === storeId
@@ -25,6 +31,10 @@ export default function StoreDetail() {
       <KrogerStoreDetail key={storeId} storeId={storeId} />
     );
   }
+  if (params.get("source") === "openstreetmap")
+    return (
+      <CommunityStoreDetail key={storeId} storeId={storeId} />
+    );
 
   if (!store) {
     return (
@@ -49,7 +59,9 @@ export default function StoreDetail() {
     }))
     .filter(
       (row) =>
-        row.product && productMatchesQuery(row.product, query)
+        row.product &&
+        productMatchesQuery(row.product, query) &&
+        dietaryStatus(row.product, dietary).ok
     )
     .sort((a, b) =>
       a.product.name.localeCompare(b.product.name)
@@ -74,6 +86,7 @@ export default function StoreDetail() {
           ? ` | prices updated ${ageLabel(newest.updated_at, priceClock(newest))}`
           : ""}
       </p>
+      <DietaryNotice />
       <form
         className="search"
         role="search"
@@ -105,7 +118,7 @@ export default function StoreDetail() {
             <div className="price-col">
               <strong>
                 {row.in_stock
-                  ? money(row.price)
+                  ? money(listedUnit(row, includeMember))
                   : "Unavailable"}
               </strong>
               <span>{row.product.list_unit}</span>

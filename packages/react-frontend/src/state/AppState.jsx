@@ -1,10 +1,19 @@
-import { useCallback, useEffect, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState
+} from "react";
 import { loadRemoteCatalog } from "../data/api.js";
 import NotificationState from "./NotificationState.jsx";
 import { useAuthSession } from "./useAuthSession.js";
 import { useSavedLists } from "../hooks/useSavedLists.js";
 import { listDocument } from "../lib/savedLists.js";
-import { mergeCatalog } from "../lib/catalog.js";
+import {
+  mergeCatalog,
+  catalogForLocation
+} from "../lib/catalog.js";
+import { useMapLocation } from "../hooks/useMapLocation.js";
 import {
   loadAccountState,
   saveAccountState,
@@ -72,6 +81,9 @@ function loadInitial(userId) {
       ...base,
       ...saved,
       ...listDocument(saved),
+      radiusMi: Number.isFinite(saved.radiusMi)
+        ? Math.max(1, Math.min(100, saved.radiusMi))
+        : base.radiusMi,
       catalog: base.catalog
     };
   } catch {
@@ -100,6 +112,11 @@ export function AppStateProvider({ children }) {
 function AccountStateProvider({ auth, children }) {
   const userId = auth.user?.id;
   const [state, setState] = useState(() => loadInitial(userId));
+  const { place } = useMapLocation(state.location);
+  const catalog = useMemo(
+    () => catalogForLocation(state.catalog, place),
+    [state.catalog, place]
+  );
   const [now, setNow] = useState(Date.now);
   const listSync = useSavedLists(userId, state, setState);
   const refreshCatalog = useCallback(async () => {
@@ -145,6 +162,8 @@ function AccountStateProvider({ auth, children }) {
   const api = {
     ...state,
     ...auth,
+    catalog,
+    location: place || state.location,
     refreshCatalog,
     listSync,
     now,
@@ -234,6 +253,12 @@ function AccountStateProvider({ auth, children }) {
       setState((current) => ({ ...current, location }));
     },
     setRadius(radiusMi) {
+      if (
+        !Number.isFinite(radiusMi) ||
+        radiusMi < 1 ||
+        radiusMi > 100
+      )
+        return;
       setState((current) => ({ ...current, radiusMi }));
     },
     rememberSearch(term) {

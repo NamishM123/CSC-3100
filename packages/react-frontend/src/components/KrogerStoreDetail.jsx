@@ -7,6 +7,7 @@ import { dietaryStatus } from "../lib/search.js";
 import { useAppState } from "../state/useAppState.js";
 import LiveProductCard from "./LiveProductCard.jsx";
 import Screen from "./Screen.jsx";
+import DietaryNotice from "./DietaryNotice.jsx";
 
 const FEATURED_QUERIES = ["milk", "eggs", "bread"];
 
@@ -21,6 +22,7 @@ export default function KrogerStoreDetail({ storeId }) {
       location: location.place,
       radiusMi: state.radiusMi,
       storeId,
+      dietary: state.dietary,
       queries: query ? [query] : FEATURED_QUERIES
     });
   const resultStore = current?.stores.find(
@@ -124,6 +126,7 @@ export default function KrogerStoreDetail({ storeId }) {
       {location.loading || pending ? (
         <p role="status">Loading store items...</p>
       ) : null}
+      <DietaryNotice limited={current?.dietaryLimited} />
       {location.error || error ? (
         <div className="card" role="alert">
           <p>{location.error || error}</p>

@@ -1,9 +1,9 @@
 import { useKrogerSearch } from "../hooks/useKrogerSearch.js";
 import { rankKrogerStores } from "../lib/recommendations.js";
-import { dietaryStatus } from "../lib/search.js";
 import { miles } from "../lib/format.js";
 import { useAppState } from "../state/useAppState.js";
 import LiveProductCard from "./LiveProductCard.jsx";
+import DietaryNotice from "./DietaryNotice.jsx";
 
 export default function LiveProductSearch({ query: rawQuery }) {
   const query = rawQuery.trim();
@@ -13,12 +13,14 @@ export default function LiveProductSearch({ query: rawQuery }) {
     useKrogerSearch({
       location: state.location,
       radiusMi: state.radiusMi,
+      dietary: state.dietary,
       queries: valid ? [query] : []
     });
   const rows = rankKrogerStores({
     stores: current?.stores || [],
     items: [{ id: "search", query, quantity: 1 }],
     products: [],
+    dietary: state.dietary,
     now: Math.max(state.now, receivedAt || 0)
   });
   return (
@@ -39,6 +41,7 @@ export default function LiveProductSearch({ query: rawQuery }) {
         list.
       </p>
       {!valid ? <p>Search using 1–120 characters.</p> : null}
+      <DietaryNotice limited={current?.dietaryLimited} />
       {pending ? (
         <p role="status">Searching Kroger stores...</p>
       ) : null}
@@ -61,7 +64,7 @@ export default function LiveProductSearch({ query: rawQuery }) {
             {line.error ? (
               <p role="alert">{line.error}</p>
             ) : !line.options.length ? (
-              <p>No matching products at this store.</p>
+              <p>{line.status}</p>
             ) : null}
             {line.truncated ? (
               <p className="fine">
@@ -70,26 +73,21 @@ export default function LiveProductSearch({ query: rawQuery }) {
               </p>
             ) : null}
             <div className="cards-grid stack">
-              {line.options
-                .filter(
-                  (product) =>
-                    dietaryStatus(product, state.dietary).ok
-                )
-                .map((product) => {
-                  const fresh =
-                    line.status !==
-                      "Refresh prices to check availability" &&
-                    !line.error;
-                  return (
-                    <LiveProductCard
-                      key={product.id}
-                      product={product}
-                      storeId={store.id}
-                      query={query}
-                      fresh={fresh}
-                    />
-                  );
-                })}
+              {line.options.map((product) => {
+                const fresh =
+                  line.status !==
+                    "Refresh prices to check availability" &&
+                  !line.error;
+                return (
+                  <LiveProductCard
+                    key={product.id}
+                    product={product}
+                    storeId={store.id}
+                    query={query}
+                    fresh={fresh}
+                  />
+                );
+              })}
             </div>
           </div>
         );

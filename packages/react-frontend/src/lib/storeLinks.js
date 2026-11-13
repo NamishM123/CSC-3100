@@ -1,6 +1,6 @@
 export function storeItemsPath(store) {
   const path = `/stores/${encodeURIComponent(store.id)}`;
-  return store.source === "kroger"
-    ? `${path}?source=kroger`
+  return ["kroger", "openstreetmap"].includes(store.source)
+    ? `${path}?source=${store.source}`
     : path;
 }

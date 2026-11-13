@@ -5,7 +5,8 @@ import StoreCard from "../components/StoreCard.jsx";
 import StoreMap from "../components/StoreMap.jsx";
 import { DEMO_NOW } from "../data/mock.js";
 import { ageOld } from "../lib/format.js";
-import { nearbyStores } from "../lib/geo.js";
+import { mergeNearbyStores } from "../lib/storeDiscovery.js";
+import { useOpenData } from "../hooks/useOpenData.js";
 import { useMapLocation } from "../hooks/useMapLocation.js";
 import { useKrogerLocations } from "../hooks/useKrogerLocations.js";
 import { useAppState } from "../state/useAppState.js";
@@ -22,14 +23,32 @@ export default function Stores() {
   const { place, loading, error, retry } =
     useMapLocation(location);
   const kroger = useKrogerLocations(place, radiusMi);
+  const community = useOpenData(
+    place
+      ? {
+          action: "stores",
+          location: place,
+          radiusMi: Math.max(1, radiusMi)
+        }
+      : null
+  );
+  const communityStores = community.data?.stores;
   const stores = useMemo(
     () =>
-      nearbyStores(
-        [...catalog.stores, ...kroger.stores],
+      mergeNearbyStores(
+        catalog.stores,
+        kroger.stores,
+        communityStores || [],
         place,
         radiusMi
       ),
-    [catalog.stores, kroger.stores, place, radiusMi]
+    [
+      catalog.stores,
+      kroger.stores,
+      communityStores,
+      place,
+      radiusMi
+    ]
   );
 
   function ageFor(storeId) {
@@ -62,6 +81,44 @@ export default function Stores() {
       {kroger.loading ? (
         <p className="fine" role="status">
           Finding nearby Kroger family stores...
+        </p>
+      ) : null}
+      {community.loading ? (
+        <p className="fine" role="status">
+          Finding other nearby grocery stores...
+        </p>
+      ) : null}
+      {community.error ? (
+        <p className="fine" role="status">
+          {community.error}{" "}
+          <button
+            type="button"
+            className="text-link"
+            onClick={community.retry}>
+            Retry other stores
+          </button>
+        </p>
+      ) : null}
+      {community.data ? (
+        <p className="fine">
+          Additional store locations from{" "}
+          <a
+            href="https://www.openstreetmap.org/copyright"
+            target="_blank"
+            rel="noreferrer">
+            OpenStreetMap contributors
+          </a>{" "}
+          (ODbL). Community price reports may be available;
+          stock is unconfirmed.
+          {radiusMi > 25
+            ? " Community map search covers the nearest 25 miles."
+            : ""}
+          {community.data.limitedStores
+            ? " Showing the nearest 60 community stores."
+            : ""}
+          {community.data.mapFallback
+            ? " Full map search is temporarily unavailable; showing locations known to Open Prices."
+            : ""}
         </p>
       ) : null}
       {kroger.error ? (
@@ -183,6 +240,7 @@ export default function Stores() {
             ))}
             {stores.length === 0 &&
             !kroger.loading &&
+            !community.loading &&
             !kroger.error ? (
               <div className="card empty">
                 <h2>No stores in this area yet</h2>
