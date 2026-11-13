@@ -27,15 +27,21 @@ export default function StoreCard({
             {store.name}
           </Link>
         )}
-        <p className="muted">{store.address}</p>
+        <p className="muted">
+          {[store.address, store.city]
+            .filter(Boolean)
+            .join(", ")}
+        </p>
         <p className="muted">
           {store.source === "kroger"
             ? "Kroger family store"
-            : store.source === "openstreetmap"
-              ? "Community store · View reported prices"
-              : variant === "drive"
-                ? `${miles(store.distance_mi)} | ${store.hours_label}`
-                : `${store.hours_label} | prices ${age}`}
+            : store.source === "weekly-ads"
+              ? "Weekly-ad prices · Stock unconfirmed"
+              : store.source === "openstreetmap"
+                ? "Community store · View reported prices"
+                : variant === "drive"
+                  ? `${miles(store.distance_mi)} | ${store.hours_label}`
+                  : `${store.hours_label} | prices ${age}`}
         </p>
         <Link
           className="text-link store-items-link"
@@ -45,7 +51,8 @@ export default function StoreCard({
           View store items
         </Link>
       </div>
-      {variant === "drive" ? (
+      {variant === "drive" &&
+      Number.isFinite(store.drive_minutes) ? (
         <div className="drive">
           <strong>{store.drive_minutes} min</strong>
           <span>drive</span>

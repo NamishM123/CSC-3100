@@ -101,14 +101,29 @@ five stores.
 
 ### Free weekly-ad collectors
 
-**Stores → Central Coast weekly ads** loads advertised deals
-from California Fresh Market, Spencer's Fresh Markets, and SLO
-Food Co-op. These regional publishers are listed separately from
-the map's radius-filtered physical stores. Confirm the
-participating branch and purchase conditions on the original ad;
-an advertised price does not confirm stock or enter the
+**Stores** and **Home → Nearby stores** include seven verified
+physical branches: California Fresh Market in San Luis Obispo
+and Pismo Beach, El Rancho Marketplace in Solvang, Spencer's in
+Morro Bay, Santa Maria, and Lompoc, and SLO Food Co-op. Their
+real coordinates participate in the same map, distance sorting,
+and radius filter as other stores. Open a branch to see its
+address, hours where supplied, advertised items, and original
+flyers. The directory retains publisher location links and
+OpenStreetMap coordinate attribution (ODbL); it does not need a
+geocoding API at runtime.
+
+The shared directory combines these branches with Kroger, mapped
+stores, and the connected catalog. Duplicate physical locations
+become one marker. When a real store replaces a built-in sample
+of the same brand in the same city, its sample entry, prices,
+history, and swaps are removed from the active catalog.
+Nonconflicting samples and saved shopping requests remain
+available. Old store IDs resolve to the replacement entry.
+Confirm branch participation and purchase conditions on the
+original ad; an advertised price does not confirm stock or enter
 confirmed shopping-basket totals. Adding an advertised product
-to a list saves its name as a shopping request, not its price.
+to a list saves its name and size as a shopping request, not its
+price.
 
 - California Fresh's HTML collector extracts named prices,
   descriptions, package details, sale dates, multi-buy
@@ -128,6 +143,10 @@ to a list saves its name as a shopping request, not its price.
 
 No retailer key or paid scraping/OCR service is required. The
 existing authenticated `/api/open-data` endpoint accepts
+`{ "action": "weeklyAds", "storeId": "weekly-california-fresh-slo" }`
+and resolves the publisher from the trusted branch directory.
+Branches share their publisher's cache; stock remains unknown.
+Provider-level requests remain supported with
 `{ "action": "weeklyAds", "provider": "california-fresh" }`; the
 other provider IDs are `spencers` and `slo-food-coop`. Clients
 cannot supply arbitrary upstream URLs. Fixed publisher hosts and

@@ -1,56 +1,35 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import Screen from "../components/Screen.jsx";
 import StoreCard from "../components/StoreCard.jsx";
 import StoreMap from "../components/StoreMap.jsx";
 import { DEMO_NOW } from "../data/mock.js";
 import { ageOld } from "../lib/format.js";
-import { mergeNearbyStores } from "../lib/storeDiscovery.js";
-import { useOpenData } from "../hooks/useOpenData.js";
-import { useMapLocation } from "../hooks/useMapLocation.js";
-import { useKrogerLocations } from "../hooks/useKrogerLocations.js";
+import { nearbyStores } from "../lib/geo.js";
 import { useAppState } from "../state/useAppState.js";
 import { storeItemsPath } from "../lib/storeLinks.js";
-import { weeklyAdSources } from "../lib/weeklyAdSources.js";
 
 export default function Stores() {
-  const { catalog, location, radiusMi } = useAppState();
+  const { catalog, location, radiusMi, storeDirectory } =
+    useAppState();
   const route = useLocation();
   const [mode, setMode] = useState("map");
   const [selectedStoreId, setSelectedStoreId] = useState(
     route.state?.selectedStoreId || null
   );
   const [focusRequest, setFocusRequest] = useState(0);
-  const { place, loading, error, retry } =
-    useMapLocation(location);
-  const kroger = useKrogerLocations(place, radiusMi);
-  const community = useOpenData(
-    place
-      ? {
-          action: "stores",
-          location: place,
-          radiusMi: Math.max(1, radiusMi)
-        }
-      : null
-  );
-  const communityStores = community.data?.stores;
-  const stores = useMemo(
-    () =>
-      mergeNearbyStores(
-        catalog.stores,
-        kroger.stores,
-        communityStores || [],
-        place,
-        radiusMi
-      ),
-    [
-      catalog.stores,
-      kroger.stores,
-      communityStores,
-      place,
-      radiusMi
-    ]
-  );
+  const {
+    mapLocation: { place, loading, error, retry },
+    kroger,
+    community
+  } = storeDirectory;
+  const stores = nearbyStores(catalog.stores, place, radiusMi);
+  const selectedCanonicalId =
+    stores.find(
+      (store) =>
+        store.id === selectedStoreId ||
+        store.alternate_ids?.includes(selectedStoreId)
+    )?.id || selectedStoreId;
 
   function ageFor(storeId) {
     const times = catalog.prices
@@ -213,7 +192,7 @@ export default function Stores() {
               place={place}
               stores={stores}
               radiusMi={radiusMi}
-              selectedStoreId={selectedStoreId}
+              selectedStoreId={selectedCanonicalId}
               focusRequest={focusRequest}
               onSelectStore={setSelectedStoreId}
             />
@@ -223,7 +202,7 @@ export default function Stores() {
               <div
                 key={store.id}
                 className={
-                  selectedStoreId === store.id
+                  selectedCanonicalId === store.id
                     ? "store-result selected"
                     : "store-result"
                 }>
@@ -258,28 +237,6 @@ export default function Stores() {
           </div>
         </div>
       ) : null}
-      <section
-        className="stack"
-        aria-label="Central Coast weekly ads">
-        <h2>Central Coast weekly ads</h2>
-        <p className="muted">
-          Browse advertised deals from these regional grocers.
-          Locations listed here are independent of your map
-          radius; confirm the participating branch.
-        </p>
-        <div className="stack cards-grid">
-          {weeklyAdSources.map((source) => (
-            <article key={source.id} className="card">
-              <Link
-                className="text-link"
-                to={`/stores/${source.id}?source=weekly-ads`}>
-                {source.name}
-              </Link>
-              <p className="fine">{source.area}</p>
-            </article>
-          ))}
-        </div>
-      </section>
     </Screen>
   );
 }

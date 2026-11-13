@@ -308,9 +308,14 @@ export function compareList({
     splitTotal,
     single,
     savings: single ? cents(single.total - splitTotal) : null,
-    extraMinutes: single
-      ? splitDrive - single.store.drive_minutes
-      : null,
+    extraMinutes:
+      single &&
+      Number.isFinite(single.store.drive_minutes) &&
+      stops.every((stop) =>
+        Number.isFinite(stop.store.drive_minutes)
+      )
+        ? splitDrive - single.store.drive_minutes
+        : null,
     oldestUpdatedAt: oldestUpdate(assignments, single)
   };
 }

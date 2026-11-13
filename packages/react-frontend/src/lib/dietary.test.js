@@ -22,17 +22,20 @@ test("catalog radius checks use the selected location instead of illustrative st
     catalogForLocation(catalog, {
       latitude: 40.71,
       longitude: -74
-    }).stores[0].distance_mi > 100
+    }).stores.find((store) => store.id === "slo").distance_mi >
+      100
   );
   assert.equal(
     catalogForLocation(catalog, {
       latitude: 35.28,
       longitude: -120.66
-    }).stores[0].distance_mi,
+    }).stores.find((store) => store.id === "slo").distance_mi,
     0
   );
   assert.equal(
-    catalogForLocation(catalog, null).stores[0].distance_mi,
+    catalogForLocation(catalog, null).stores.find(
+      (store) => store.id === "slo"
+    ).distance_mi,
     Infinity
   );
   assert.equal(catalog.stores[0].distance_mi, 0.8);

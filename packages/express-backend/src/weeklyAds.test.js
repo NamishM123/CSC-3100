@@ -446,6 +446,68 @@ test("existing authenticated open-data handler exposes weekly ads and rejects in
   assert.equal(res.code, 400);
 });
 
+test("branch inventory resolves a trusted provider, shares the publisher cache, and rejects unknown store IDs", async () => {
+  let calls = 0;
+  const ads = createWeeklyAdClient({
+    now: () => now,
+    fetchImpl: async () => {
+      calls++;
+      return response(html());
+    }
+  });
+  const handler = createOpenDataHandler({}, ads);
+  const res = {
+    setHeader() {},
+    status(code) {
+      this.code = code;
+      return this;
+    },
+    json(value) {
+      this.value = value;
+      return this;
+    }
+  };
+  await handler(
+    {
+      method: "POST",
+      body: {
+        action: "weeklyAds",
+        storeId: "weekly-california-fresh-slo",
+        provider: "spencers"
+      }
+    },
+    res
+  );
+  assert.equal(res.value.store.city, "San Luis Obispo");
+  assert.equal(res.value.source.id, "california-fresh");
+  assert.equal(res.value.offers.length, 1);
+  assert.equal(res.value.offers[0].availability, "unknown");
+  await handler(
+    {
+      method: "POST",
+      body: {
+        action: "weeklyAds",
+        storeId: "weekly-california-fresh-pismo"
+      }
+    },
+    res
+  );
+  assert.equal(res.value.store.city, "Pismo Beach");
+  assert.equal(calls, 1);
+  await handler(
+    {
+      method: "POST",
+      body: {
+        action: "weeklyAds",
+        storeId: "https://evil.example/"
+      }
+    },
+    res
+  );
+  assert.equal(res.code, 400);
+  assert.equal(calls, 1);
+});
+
 test("PDF worker rejects invalid PDFs instead of blocking indefinitely", async () => {
   await assert.rejects(extractPdf(Buffer.from("%PDF-invalid")));
 });

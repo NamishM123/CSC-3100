@@ -3,6 +3,7 @@ import {
   distanceMiles
 } from "../../react-frontend/src/lib/geo.js";
 import { weeklyAdClient } from "./weeklyAds.js";
+import { weeklyAdStore } from "../../react-frontend/src/lib/weeklyAdStores.js";
 
 const OVERPASS =
   "https://overpass.private.coffee/api/interpreter";
@@ -482,8 +483,21 @@ export function createOpenDataHandler(
     }
     try {
       const body = req.body;
-      if (body?.action === "weeklyAds")
+      if (body?.action === "weeklyAds") {
+        if (body.storeId != null) {
+          const store = weeklyAdStore(body.storeId);
+          if (!store)
+            throw fail(
+              400,
+              "Choose a supported grocery store."
+            );
+          return res.json({
+            ...(await ads.collect(store.provider)),
+            store
+          });
+        }
         return res.json(await ads.collect(body.provider));
+      }
       if (body?.action === "stores")
         return res.json(await client.stores(body));
       if (body?.action === "inventory") {

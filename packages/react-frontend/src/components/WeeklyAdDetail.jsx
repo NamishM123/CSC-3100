@@ -1,6 +1,10 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useOpenData } from "../hooks/useOpenData.js";
 import { weeklyAdSources } from "../lib/weeklyAdSources.js";
+import { weeklyAdStore } from "../lib/weeklyAdStores.js";
+import { distanceMiles } from "../lib/geo.js";
+import { miles } from "../lib/format.js";
 import {
   dietaryStatus,
   productMatchesQuery
@@ -10,14 +14,24 @@ import Screen from "./Screen.jsx";
 import DietaryNotice from "./DietaryNotice.jsx";
 import AddItemToList from "./AddItemToList.jsx";
 
-export default function WeeklyAdDetail({ provider }) {
-  const { dietary } = useAppState();
+export default function WeeklyAdDetail({ provider, storeId }) {
+  const { dietary, location } = useAppState();
   const [query, setQuery] = useState("");
+  const store = weeklyAdStore(storeId);
+  const providerId = store?.provider || provider;
+  const distance = distanceMiles(location, store);
   const source = weeklyAdSources.find(
-    (entry) => entry.id === provider
+    (entry) => entry.id === providerId
   );
   const { data, loading, error, retry } = useOpenData(
-    source ? { action: "weeklyAds", provider } : null
+    source
+      ? {
+          action: "weeklyAds",
+          ...(store
+            ? { storeId: store.id }
+            : { provider: providerId })
+        }
+      : null
   );
   const offers = (data?.offers || []).filter(
     (offer) =>
@@ -27,18 +41,43 @@ export default function WeeklyAdDetail({ provider }) {
   return (
     <Screen
       title={
-        source
-          ? `${source.name} weekly ad`
-          : "Weekly ad not found"
+        store
+          ? `${store.name} — ${store.city}`
+          : source
+            ? `${source.name} weekly ad`
+            : "Weekly ad not found"
       }
       backTo="/stores">
       {source ? (
         <>
-          <p>{source.area}</p>
+          {store ? (
+            <>
+              <p>
+                {store.address}
+                <br />
+                {store.city}, {store.state} {store.zip}
+              </p>
+              <p className="meta">
+                {store.hours_label}
+                {distance != null
+                  ? ` · ${miles(distance)} away`
+                  : ""}
+              </p>
+              <Link
+                className="text-link store-items-link"
+                to="/stores"
+                state={{ selectedStoreId: store.id }}>
+                Show on map
+              </Link>
+            </>
+          ) : (
+            <p>{source.area}</p>
+          )}
+          <h2>Advertised items</h2>
           <p className="muted">
-            Advertised deals for this publisher&apos;s
-            locations. Confirm your branch, package size, and
-            purchase conditions. Stock is unconfirmed; these
+            Advertised offers from this store&apos;s publisher.
+            Availability may vary by branch. Check package size
+            and purchase conditions. Stock is unconfirmed; these
             offers do not enter confirmed basket totals.
           </p>
           <div className="section-title">
@@ -57,6 +96,44 @@ export default function WeeklyAdDetail({ provider }) {
               Refresh
             </button>
           </div>
+          {store ? (
+            <p className="fine">
+              Location:{" "}
+              <a
+                href={store.source_url}
+                target="_blank"
+                rel="noreferrer">
+                store publisher
+              </a>
+              . Coordinates:{" "}
+              <a
+                href={store.coordinate_source_url}
+                target="_blank"
+                rel="noreferrer">
+                {store.coordinate_source_url.includes(
+                  "openstreetmap.org"
+                )
+                  ? "OpenStreetMap contributors"
+                  : "store publisher"}
+              </a>
+              {store.coordinate_source_url.includes(
+                "openstreetmap.org"
+              ) ? (
+                <>
+                  {" "}
+                  (
+                  <a
+                    href="https://www.openstreetmap.org/copyright"
+                    target="_blank"
+                    rel="noreferrer">
+                    ODbL
+                  </a>
+                  )
+                </>
+              ) : null}
+              .
+            </p>
+          ) : null}
           {loading ? (
             <p role="status">
               Collecting the latest weekly ad...
