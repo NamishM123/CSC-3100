@@ -95,17 +95,15 @@ test("OSM discoveries of a curated branch become one marker with its ad route, w
   assert.equal(mapped.alternate_ids.length, 0);
 });
 
-test("real branch data replaces a fictional built-in store and removes its sample prices, history, and swaps everywhere", () => {
+test("a real record for the same physical location replaces its sample entry and sample prices", () => {
   const real = {
+    ...sample.stores.find((store) => store.id === "store-go"),
     id: "osm-real-grocery-outlet",
     name: "Grocery Outlet",
     source: "openstreetmap",
-    address: "1314 Madonna Road",
     city: "San Luis Obispo",
     state: "CA",
-    zip: "93405",
-    latitude: 35.262,
-    longitude: -120.678
+    zip: "93405"
   };
   const catalog = catalogWithStoreDirectory(sample, [real]);
   assert.equal(
@@ -142,6 +140,30 @@ test("real branch data replaces a fictional built-in store and removes its sampl
   );
   assert.ok(
     sample.stores.some((store) => store.id === "store-go")
+  );
+});
+
+test("a nearby mapped point without an address cannot remove a built-in sample", () => {
+  const demo = sample.stores[0];
+  const mapped = {
+    ...demo,
+    id: "osm-nearby",
+    source: "openstreetmap",
+    address: undefined,
+    latitude: demo.latitude + 0.0001
+  };
+  assert.equal(samePhysicalStore(demo, mapped), false);
+  const catalog = catalogWithStoreDirectory(sample, [mapped]);
+  assert.ok(
+    catalog.stores.some((store) => store.id === demo.id)
+  );
+  assert.ok(
+    catalog.prices.some((price) => price.store_id === demo.id)
+  );
+  assert.ok(
+    !catalog.prices.some(
+      (price) => price.store_id === mapped.id
+    )
   );
 });
 
@@ -288,10 +310,7 @@ test("catalog refreshes cannot turn copied sample locations into real stores or 
   const real = {
     ...seeded,
     id: "osm-real-go",
-    source: "openstreetmap",
-    address: "1314 Madonna Road",
-    latitude: 35.262,
-    longitude: -120.678
+    source: "openstreetmap"
   };
   const catalog = catalogWithStoreDirectory(remote, [real]);
   assert.equal(
@@ -307,5 +326,42 @@ test("catalog refreshes cannot turn copied sample locations into real stores or 
   assert.equal(
     catalog.prices.some((row) => row.store_id === real.id),
     false
+  );
+});
+
+test("built-in stores and their sample data remain available when a different branch of the same brand is mapped", () => {
+  const real = {
+    id: "osm-other-grocery-outlet",
+    name: "Grocery Outlet",
+    source: "openstreetmap",
+    address: "1314 Madonna Road",
+    city: "San Luis Obispo",
+    state: "CA",
+    zip: "93405",
+    latitude: 35.262,
+    longitude: -120.678
+  };
+  const catalog = catalogForLocation(sample, slo, [real]);
+  const nearby = nearbyStores(catalog.stores, slo, 5);
+  for (const builtIn of sample.stores) {
+    assert.ok(
+      nearby.some((store) => store.id === builtIn.id),
+      builtIn.name
+    );
+    for (const key of [
+      "prices",
+      "price_history",
+      "product_swaps"
+    ])
+      assert.deepEqual(
+        catalog[key].filter(
+          (row) => row.store_id === builtIn.id
+        ),
+        sample[key].filter((row) => row.store_id === builtIn.id)
+      );
+  }
+  assert.ok(nearby.some((store) => store.id === real.id));
+  assert.ok(
+    !catalog.prices.some((price) => price.store_id === real.id)
   );
 });

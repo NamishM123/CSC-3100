@@ -511,16 +511,18 @@ export default function StoreRecommendations({ items }) {
           </div>
         )
       )}
-      {real.map((row, index) => (
-        <StoreBasket
-          key={row.store.id}
-          row={row}
-          recommended={
-            index === 0 && row.complete && !feeds.pending
-          }
-          onSelect={state.setStoreProduct}
-        />
-      ))}
+      {real
+        .filter((row) => row.matched > 0)
+        .map((row, index) => (
+          <StoreBasket
+            key={row.store.id}
+            row={row}
+            recommended={
+              index === 0 && row.complete && !feeds.pending
+            }
+            onSelect={state.setStoreProduct}
+          />
+        ))}
       {active.length > 0 &&
       !ranked.length &&
       !discoveryPending ? (
@@ -530,10 +532,10 @@ export default function StoreRecommendations({ items }) {
         </p>
       ) : null}
       {samples.length ? (
-        <details>
-          <summary>
-            Sample store comparisons ({samples.length})
-          </summary>
+        <section
+          className="stack"
+          aria-label="Built-in sample store comparisons">
+          <h3>Built-in sample stores ({samples.length})</h3>
           <p className="fine">
             These built-in prices are illustrative. Their scores
             are calculated separately and never influence
@@ -548,7 +550,23 @@ export default function StoreRecommendations({ items }) {
               />
             ))}
           </div>
-        </details>
+        </section>
+      ) : null}
+      {real.some((row) => !row.matched) ? (
+        <section
+          className="stack"
+          aria-label="Stores without comparable prices">
+          <h3>Stores without comparable prices</h3>
+          {real
+            .filter((row) => !row.matched)
+            .map((row) => (
+              <StoreBasket
+                key={row.store.id}
+                row={row}
+                onSelect={state.setStoreProduct}
+              />
+            ))}
+        </section>
       ) : null}
       {active.length ? (
         <p className="fine">

@@ -396,51 +396,54 @@ export function rankStoreBaskets({
       };
     })
   }));
-  const bases = active.map((item, index) => {
-    const counts = new Map();
-    const real = prepared.filter(
-      (row) => row.store.source !== "demo"
-    );
-    const candidates = real.some(
-      (row) => row.lines[index].usable.length
-    )
-      ? real
-      : prepared;
-    for (const row of candidates)
-      for (const unit of new Set(
-        row.lines[index].usable.map(
-          (p) => p.pricing_unit || "item"
-        )
-      ))
-        counts.set(unit, (counts.get(unit) || 0) + 1);
-    const units = [
-      ...new Set([
-        ...counts.keys(),
-        ...(item.comparisonUnit ? [item.comparisonUnit] : [])
-      ])
-    ].sort();
-    const explicitWeight = /\b(?:lb|lbs|pounds?)\b/i.test(
-      item.query || ""
-    )
-      ? "lb"
-      : /\b(?:kg|kilograms?)\b/i.test(item.query || "")
-        ? "kg"
-        : null;
-    const unit =
-      item.comparisonUnit ||
-      (explicitWeight && units.includes(explicitWeight)
-        ? explicitWeight
-        : [...counts].sort(
-            (a, b) => b[1] - a[1] || a[0].localeCompare(b[0])
-          )[0]?.[0]) ||
-      "item";
-    return { unit, units: [...new Set([unit, ...units])] };
-  });
+  const basesFor = (candidates) =>
+    active.map((item, index) => {
+      const counts = new Map();
+      for (const row of candidates)
+        for (const unit of new Set(
+          row.lines[index].usable.map(
+            (p) => p.pricing_unit || "item"
+          )
+        ))
+          counts.set(unit, (counts.get(unit) || 0) + 1);
+      const units = [
+        ...new Set([
+          ...counts.keys(),
+          ...(item.comparisonUnit ? [item.comparisonUnit] : [])
+        ])
+      ].sort();
+      const explicitWeight = /\b(?:lb|lbs|pounds?)\b/i.test(
+        item.query || ""
+      )
+        ? "lb"
+        : /\b(?:kg|kilograms?)\b/i.test(item.query || "")
+          ? "kg"
+          : null;
+      const unit =
+        item.comparisonUnit ||
+        (explicitWeight && units.includes(explicitWeight)
+          ? explicitWeight
+          : [...counts].sort(
+              (a, b) => b[1] - a[1] || a[0].localeCompare(b[0])
+            )[0]?.[0]) ||
+        "item";
+      return { unit, units: [...new Set([unit, ...units])] };
+    });
+  const real = prepared.filter(
+    (row) => row.store.source !== "demo"
+  );
+  const samples = prepared.filter(
+    (row) => row.store.source === "demo"
+  );
+  const bases = basesFor(real.length ? real : samples);
+  const sampleBases = basesFor(samples);
   const rows = prepared.map(({ store, lines }) => {
     let total = 0;
     let confirmed = 0;
     const completeLines = lines.map((line, index) => {
-      const basis = bases[index];
+      const basis = (
+        store.source === "demo" ? sampleBases : bases
+      )[index];
       const usable = line.usable
         .filter(
           (p) => (p.pricing_unit || "item") === basis.unit

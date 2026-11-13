@@ -16,12 +16,14 @@ function storePopup(store, navigate) {
   name.textContent = store.name;
   content.append(name);
 
-  if (["kroger", "weekly-ads"].includes(store.source)) {
+  if (["kroger", "weekly-ads", "demo"].includes(store.source)) {
     const label = document.createElement("p");
     label.textContent =
-      store.source === "weekly-ads"
-        ? "Weekly-ad prices · Stock unconfirmed"
-        : "Kroger family store";
+      store.source === "demo"
+        ? "Built-in sample store · Illustrative location and prices"
+        : store.source === "weekly-ads"
+          ? "Weekly-ad prices · Stock unconfirmed"
+          : "Kroger family store";
     content.append(label);
   }
   const address = document.createElement("p");

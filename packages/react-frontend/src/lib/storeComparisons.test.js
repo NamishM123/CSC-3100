@@ -315,6 +315,11 @@ test("sample data never changes real-store scores or the automatic unit basis", 
   assert.equal(rows[0].store.id, "real");
   assert.equal(rows[0].score, baseline);
   assert.equal(rows[0].lines[0].unit, "lb");
+  const sample = rows.find((row) => row.demo);
+  assert.equal(sample.lines[0].unit, "item");
+  assert.equal(sample.matched, 1);
+  assert.equal(sample.total, 0.01);
+  assert.equal(sample.score, 100);
 });
 
 test("confirmed retailer scoring remains compatible with saved Kroger recommendations and strict size matching", () => {
