@@ -37,12 +37,7 @@ const KNOWN_ZIPS = {
   93410: "San Luis Obispo"
 };
 
-export const DIETARY_FILTERS = [
-  "Vegan",
-  "Gluten free",
-  "Dairy free",
-  "Nut free"
-];
+export { DIETARY_FILTERS } from "../lib/dietary.js";
 
 export function cityForZip(zip) {
   return KNOWN_ZIPS[zip] || null;

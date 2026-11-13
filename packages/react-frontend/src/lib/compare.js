@@ -1,11 +1,31 @@
 import { cents, isStale } from "./format.js";
 import { priceClock } from "./catalog.js";
+import { dietaryStatus } from "./dietary.js";
 
-function listedUnit(row, includeMember) {
+export function listedUnit(row, includeMember) {
   if (row.is_member_price && !includeMember) {
     return row.regular_price ?? null;
   }
   return row.price;
+}
+
+export function priceForMembership(row, includeMember) {
+  return row.is_member_price && !includeMember
+    ? {
+        ...row,
+        price: listedUnit(row, false),
+        unit_price:
+          Number.isFinite(row.unit_price) &&
+          row.price > 0 &&
+          row.regular_price > 0
+            ? cents(
+                (row.unit_price * row.regular_price) / row.price
+              )
+            : null,
+        is_member_price: false,
+        is_sale: false
+      }
+    : row;
 }
 
 function acceptedSwap(
@@ -30,8 +50,18 @@ export function freshQuotes({
   includeMember,
   now,
   swaps,
-  acceptedSwapIds
+  acceptedSwapIds,
+  products = [],
+  dietary = []
 }) {
+  if (
+    dietary.length &&
+    !dietaryStatus(
+      products.find((product) => product.id === productId),
+      dietary
+    ).ok
+  )
+    return [];
   const nearby = stores.filter(
     (store) => store.distance_mi <= radiusMi
   );
@@ -44,12 +74,16 @@ export function freshQuotes({
       (item) => item.id === row.store_id
     );
     if (!store) return;
-    const swap = acceptedSwap(
+    const candidateSwap = acceptedSwap(
       swaps,
       acceptedSwapIds,
       productId,
       row.store_id
     );
+    const swap =
+      candidateSwap && dietaryStatus(candidateSwap, dietary).ok
+        ? candidateSwap
+        : null;
     const unit = swap
       ? swap.price
       : listedUnit(row, includeMember);
@@ -218,7 +252,8 @@ export function compareList({
   acceptedSwapIds,
   radiusMi,
   includeMember,
-  now
+  now,
+  dietary = []
 }) {
   const active = (items || []).filter(
     (item) => !item.checked && item.quantity > 0
@@ -241,7 +276,9 @@ export function compareList({
       includeMember,
       now,
       swaps,
-      acceptedSwapIds
+      acceptedSwapIds,
+      products,
+      dietary
     });
   const { missing, assignments } = assignSplitItems(
     active,

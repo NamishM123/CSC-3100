@@ -6,6 +6,8 @@ import KrogerRecommendations from "../components/KrogerRecommendations.jsx";
 import { compareList, lowestQuote } from "../lib/compare.js";
 import { cents, joinNames, money } from "../lib/format.js";
 import { useAppState } from "../state/useAppState.js";
+import DietaryNotice from "../components/DietaryNotice.jsx";
+import { dietaryStatus } from "../lib/dietary.js";
 
 export default function ShoppingList() {
   const state = useAppState();
@@ -30,6 +32,7 @@ export default function ShoppingList() {
     acceptedSwapIds: state.acceptedSwapIds,
     radiusMi: state.radiusMi,
     includeMember: state.includeMember,
+    dietary: state.dietary,
     now: state.now
   });
 
@@ -40,6 +43,8 @@ export default function ShoppingList() {
       stores: state.catalog.stores,
       radiusMi: state.radiusMi,
       includeMember: state.includeMember,
+      products: state.catalog.products,
+      dietary: state.dietary,
       now: state.now,
       swaps: state.catalog.product_swaps,
       acceptedSwapIds: state.acceptedSwapIds
@@ -270,6 +275,13 @@ export default function ShoppingList() {
                   <p className="muted">
                     Qty {item.quantity} | {product.list_unit}
                   </p>
+                  {!item.query &&
+                  !dietaryStatus(product, state.dietary).ok ? (
+                    <p className="fine">
+                      Excluded from totals by dietary filters;
+                      saved item kept.
+                    </p>
+                  ) : null}
                   {editing ? (
                     <div className="edit-row">
                       <button
@@ -324,6 +336,7 @@ export default function ShoppingList() {
           })}
         </div>
       )}
+      {list ? <DietaryNotice /> : null}
       {list ? (
         <KrogerRecommendations key={list.id} items={rows} />
       ) : null}

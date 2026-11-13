@@ -41,8 +41,18 @@ export default function LiveProductCard({
         </p>
         {dietary.length ? (
           <p className="fine">
-            Dietary information unverified.
+            Matches available dietary information. Check the
+            package label.
           </p>
+        ) : null}
+        {product.dietary_facts ? (
+          <a
+            className="fine"
+            href={product.dietary_facts.source_url}
+            target="_blank"
+            rel="noreferrer">
+            Dietary data: Open Food Facts (ODbL)
+          </a>
         ) : null}
         <AddItemToList
           request={{

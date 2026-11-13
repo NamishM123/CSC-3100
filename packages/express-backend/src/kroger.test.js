@@ -230,6 +230,90 @@ test("normalizes all SKU variants, promotional prices, and explicit unknown stoc
   assert.notEqual(rows[0].id, rows[1].id);
 });
 
+test("map discovery includes more than five Kroger locations without additional product calls", async () => {
+  const { fetchImpl, calls } = fixture({
+    locations: Array.from({ length: 8 }, (_, index) => ({
+      ...location,
+      locationId: String(index),
+      geolocation: {
+        ...body.location,
+        latitude: body.location.latitude + index * 0.001
+      }
+    }))
+  });
+  const result = await createKrogerClient({
+    env,
+    fetchImpl
+  }).compare({ ...body, queries: [] });
+  assert.equal(result.stores.length, 8);
+  assert.equal(result.maxStores, 50);
+  assert.ok(
+    !calls.some(({ url }) => url.pathname.endsWith("/products"))
+  );
+});
+
+test("active dietary filters enrich exact returned UPCs and failed facts never invent matches", async () => {
+  const raw = { ...rawProduct(), upc: "0123456789012" };
+  const { fetchImpl } = fixture({ products: [raw] });
+  const calls = [];
+  const foodFacts = {
+    facts: async (codes) => {
+      calls.push(codes);
+      return {
+        facts: {
+          "0123456789012": {
+            code: "0123456789012",
+            allergens: ["en:milk"]
+          }
+        },
+        limited: false
+      };
+    }
+  };
+  const result = await createKrogerClient({
+    env,
+    fetchImpl,
+    foodFacts
+  }).compare({ ...body, dietary: ["Vegan"] });
+  assert.equal(calls.length, 1);
+  assert.deepEqual(calls[0], ["0123456789012"]);
+  assert.equal(
+    result.stores[0].results[0].products[0].dietary_facts
+      .allergens[0],
+    "en:milk"
+  );
+  const ranked = rankKrogerStores({
+    stores: result.stores,
+    products: [],
+    items: [
+      { id: "milk", query: body.queries[0], quantity: 1 }
+    ],
+    dietary: ["Vegan"]
+  });
+  assert.equal(ranked[0].matched, 0);
+  const failed = await createKrogerClient({
+    env,
+    fetchImpl,
+    foodFacts: {
+      facts: async () => {
+        throw new Error("Offline");
+      }
+    }
+  }).compare({ ...body, dietary: ["Vegan"] });
+  assert.equal(failed.dietaryLimited, true);
+  assert.equal(
+    failed.stores[0].results[0].products[0].dietary_facts,
+    undefined
+  );
+  await assert.rejects(
+    createKrogerClient({ env, fetchImpl }).compare({
+      ...body,
+      dietary: ["unknown"]
+    }),
+    { status: 400 }
+  );
+});
+
 test("uses OAuth and store-specific searches, corrects retrieval typos, and caches tokens/results", async () => {
   const { calls, fetchImpl } = fixture();
   const client = createKrogerClient({ env, fetchImpl });

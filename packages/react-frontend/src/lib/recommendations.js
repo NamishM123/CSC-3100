@@ -1,5 +1,6 @@
 import { findProduct, productMatchesQuery } from "./search.js";
 import { cents } from "./format.js";
+import { dietaryStatus } from "./dietary.js";
 
 export function listSearchQuery(item, products) {
   if (item.query) return item.query;
@@ -20,6 +21,7 @@ export function rankKrogerStores({
   items,
   products,
   priceWeight = 0.7,
+  dietary = [],
   now = Date.now()
 }) {
   const active = items.filter(
@@ -48,13 +50,15 @@ export function rankKrogerStores({
         !Number.isFinite(age) ||
         age < 0 ||
         age >= 5 * 60 * 1000;
-      const options = (result?.products || [])
-        .filter((product) =>
+      const candidates = (result?.products || []).filter(
+        (product) =>
           productMatchesQuery(
             { ...product, category: "" },
             query
           )
-        )
+      );
+      const options = candidates
+        .filter((product) => dietaryStatus(product, dietary).ok)
         .sort(
           (a, b) =>
             (a.price ?? Infinity) - (b.price ?? Infinity) ||
@@ -68,6 +72,10 @@ export function rankKrogerStores({
           product.price > 0
       );
       const pinned = item.storeSelections?.[store.id];
+      const pinnedExcluded =
+        pinned &&
+        candidates.some((product) => product.id === pinned) &&
+        !options.some((product) => product.id === pinned);
       // Ambiguous typo matches need a deliberate choice. A missing pinned SKU
       // stays missing until the user clears or replaces it.
       const ambiguous =
@@ -100,21 +108,27 @@ export function rankKrogerStores({
           ? "Search failed"
           : stale
             ? "Refresh prices to check availability"
-            : pinned && !selected
-              ? "Your selected product is no longer in these results"
-              : selected?.availability === "out_of_stock"
-                ? "Selected product is out of stock"
-                : selected?.availability === "unknown"
-                  ? "Stock is unconfirmed"
-                  : selected && lineTotal == null
-                    ? "Price unavailable"
-                    : ambiguous && !pinned
-                      ? "Choose a product to confirm this match"
-                      : lineTotal != null
-                        ? "In stock"
-                        : options.length
-                          ? "No confirmed stock and price"
-                          : "No matching products returned",
+            : pinnedExcluded
+              ? "Your selected product is excluded by dietary filters"
+              : pinned && !selected
+                ? "Your selected product is no longer in these results"
+                : selected?.availability === "out_of_stock"
+                  ? "Selected product is out of stock"
+                  : selected?.availability === "unknown"
+                    ? "Stock is unconfirmed"
+                    : selected && lineTotal == null
+                      ? "Price unavailable"
+                      : ambiguous && !pinned
+                        ? "Choose a product to confirm this match"
+                        : lineTotal != null
+                          ? "In stock"
+                          : options.length
+                            ? "No confirmed stock and price"
+                            : candidates.length &&
+                                dietary.length
+                              ? "No products meet your dietary filters with enough supporting information"
+                              : "No matching products returned",
+        dietaryHidden: candidates.length - options.length,
         truncated: result?.truncated
       };
     });

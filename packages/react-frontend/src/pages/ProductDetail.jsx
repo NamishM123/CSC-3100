@@ -18,6 +18,8 @@ import { isStale } from "../lib/format.js";
 import { lowestQuote } from "../lib/compare.js";
 import { useProductPrices } from "../hooks/useProductPrices.js";
 import { useAppState } from "../state/useAppState.js";
+import { dietaryStatus } from "../lib/dietary.js";
+import DietaryNotice from "../components/DietaryNotice.jsx";
 
 export default function ProductDetail() {
   const { productId } = useParams();
@@ -28,6 +30,7 @@ export default function ProductDetail() {
     location,
     radiusMi,
     includeMember,
+    dietary,
     acceptedSwapIds,
     alerts,
     addAlert
@@ -35,7 +38,12 @@ export default function ProductDetail() {
   const product = catalog.products.find(
     (entry) => entry.id === productId
   );
-  const rows = useProductPrices(catalog, product);
+  const rows = useProductPrices(
+    catalog,
+    product,
+    includeMember,
+    radiusMi
+  );
   const [hideStale, setHideStale] = useState(false);
   const [pickedStale, setPickedStale] = useState(null);
   const [alertOpen, setAlertOpen] = useState(false);
@@ -77,6 +85,8 @@ export default function ProductDetail() {
       stores: catalog.stores,
       radiusMi,
       includeMember,
+      products: catalog.products,
+      dietary,
       now,
       swaps: catalog.product_swaps,
       acceptedSwapIds
@@ -94,6 +104,22 @@ export default function ProductDetail() {
             Back home
           </Link>
         </div>
+      </Screen>
+    );
+
+  if (!dietaryStatus(product, dietary).ok)
+    return (
+      <Screen
+        title={product.name}
+        backTo={`/search?q=${encodeURIComponent(product.name)}`}>
+        <DietaryNotice />
+        <p>
+          This product is excluded by your dietary filters, or
+          lacks the information needed to confirm a match.
+        </p>
+        <Link className="text-link" to="/profile">
+          Manage dietary filters
+        </Link>
       </Screen>
     );
 

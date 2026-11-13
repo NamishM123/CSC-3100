@@ -30,6 +30,74 @@ npm run dev
 
 Open http://localhost:5173
 
+### Dietary filters and free community data
+
+Profile dietary filters apply to catalog browsing, store items,
+product search, product details, catalog totals, and Kroger SKU
+recommendations. A product must have supporting information for
+every selected filter. Known conflicts and unknowns are
+excluded; unknown does not mean allergen-free. Evidence includes
+supplied dietary tags, explicit product-name claims, and
+barcode-matched Open Food Facts labels, ingredient analysis,
+allergens, and traces. A short allowlist recognizes plain
+produce, not prepared foods. Allergen and trace conflicts
+override positive claims. Check the package label, especially
+for allergies. Saved items and pinned SKUs remain saved when
+excluded, and do not become free items or silently switch to
+another SKU. Member-price selection also updates catalog price
+cards, not only totals; it does not link a loyalty account or
+change Kroger's returned prices.
+
+The app additionally uses these free, read-only sources without
+new API keys:
+
+- [OpenStreetMap / Overpass](https://dev.overpass-api.de/overpass-doc/en/preface/commons.html)
+  supplies grocery locations beyond Kroger, including
+  independent grocers when mapped. Search is capped at 25 miles
+  and the nearest 60 locations to keep requests small. Locations
+  cache for 30 minutes. If Overpass is unavailable, Open Prices'
+  nearby locations provide a fallback, with a notice about the
+  narrower coverage.
+- [Open Prices](https://prices.openfoodfacts.org/api/docs)
+  supplies store-specific community price reports. Mapped store
+  pages show up to 50 recent USD reports from the last 90 days,
+  with observation dates, source links, units, and discount
+  notices. These reports never confirm current stock or enter
+  confirmed basket totals. Many stores have no reports.
+  Responses cache for 10 minutes.
+- [Open Food Facts](https://openfoodfacts.github.io/documentation/docs/Product-Opener/api/)
+  supplies dietary facts by exact barcode when filters are
+  active. Facts are requested only for returned products, with
+  caching, shared in-flight requests, a per-process budget of 12
+  new lookups per minute, and a cooldown after upstream rate
+  limiting. Missing or failed facts stay unknown, with a visible
+  partial-lookup notice. Facts cache in server memory for 24
+  hours and are not saved with shopping lists or written into
+  the retailer catalog.
+
+Community datasets retain source attribution and ODbL notices.
+See
+[Open Food Facts reuse conditions](https://support.openfoodfacts.org/help/en-gb/12-api-data-reuse/94-are-there-conditions-to-use-the-api)
+and
+[OpenStreetMap copyright](https://www.openstreetmap.org/copyright)
+for attribution and share-alike requirements when redistributing
+data. They remain distinct from the retailer feed. Set the
+optional server-only `OPEN_DATA_USER_AGENT` to an app identifier
+with your contact URL/email, such as
+`PricePantry/1.0 (your contact URL)`, before public deployment.
+Defaults identify the app as PricePantry. Public volunteer
+services have rate limits and no uptime guarantee; errors have
+retry controls and never substitute illustrative prices.
+
+The authenticated `/api/open-data` endpoint is provided for
+local Express and both Vercel root-directory layouts. Requests
+use fixed upstream hosts and validated coordinates or OSM
+identities. Deploy the new endpoint alongside the frontend. No
+database migration is needed. Run `npm run dev:local` for both
+APIs locally. Kroger map discovery now returns up to 50
+locations; SKU price comparisons remain limited to the nearest
+five stores.
+
 ### Kroger list recommendations
 
 In **Lists**, create a list and use **Add an item to compare at
@@ -48,8 +116,8 @@ Supabase. New accounts start with no lists. Search shows
 built-in catalog products and live Kroger products; either can
 be added to an existing or new list. The built-in catalog
 includes 21 pictured products assigned to sample stores.
-Built-in sample offers remain labeled as samples and do not
-become live prices merely by being saved.
+Built-in catalog offers remain illustrative and do not become
+live prices merely by being saved.
 
 Apply
 [`202611120001_account_saved_lists.sql`](./supabase/migrations/202611120001_account_saved_lists.sql)
@@ -79,8 +147,10 @@ rather than switching products. Catalog offers reload on
 sign-in, on list selection, on focus, and every minute while
 open; connected catalog updates also recalculate baskets.
 Built-in stores without a live retailer feed retain illustrative
-prices. Real price updates currently come from Kroger or the
-connected catalog, not live Safeway/Vons/etc. APIs.
+prices. Confirmed retailer price updates come from Kroger or the
+connected catalog. Community price reports on mapped store pages
+are dated observations, not live Safeway/Vons/etc. inventory
+feeds.
 
 The default score uses 70% price and 30% distance. Adjust the
 slider to change those priorities. A store that covers the full
@@ -879,19 +949,24 @@ The store map and list automatically request nearby Kroger
 family stores through the authenticated `/api/kroger` endpoint
 using the selected coordinates and radius. This location-only
 request uses `queries: []`, so no shopping list or product
-search is required. It shows up to the nearest five Kroger
-family stores and requires `KROGER_CLIENT_ID` and
+search is required. It shows up to the nearest 50 Kroger family
+stores and requires `KROGER_CLIENT_ID` and
 `KROGER_CLIENT_SECRET` on the server. Loading, API failures with
 retry, and no nearby Kroger locations are shown explicitly.
-Selecting a live store card locates its marker on the map; its
-popup links to list comparison.
+Selecting any store name locates its marker on the map; the card
+and popup offer a separate link to store items. Kroger store
+pages support live item search.
 
 The map also filters catalog stores by the selected radius and
 calculates straight-line distances. Built-in store pins remain
-sample data in San Luis Obispo and are labeled separately from
-Kroger family stores in the popups. OpenStreetMap provides the
-basemap, not store discovery. Its attribution remains visible.
-Tiles require an internet connection and follow the
+illustrative data in San Luis Obispo. Radius checks throughout
+the catalog now calculate distances from the selected location,
+instead of using the illustrative saved distance values.
+OpenStreetMap also supplies additional grocery locations through
+Overpass, with Open Prices location fallback during outages.
+Those stores show community price reports when available. Source
+attribution remains visible. Tiles require an internet
+connection and follow the
 [OpenStreetMap tile usage policy](https://operations.osmfoundation.org/policies/tiles/).
 
 ### Mock data and Supabase

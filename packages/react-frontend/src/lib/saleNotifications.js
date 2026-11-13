@@ -1,9 +1,18 @@
 import { coordinatesOf, distanceMiles } from "./geo.js";
 import { money } from "./format.js";
 import { DEMO_NOW } from "../data/mock.js";
+import { dietaryStatus } from "./dietary.js";
 
 export function notificationWatch(state) {
   const listIds = new Set(state.lists.map((list) => list.id));
+  const allowed = (id) =>
+    !state.dietary?.length ||
+    dietaryStatus(
+      state.catalog.products?.find(
+        (product) => product.id === id
+      ),
+      state.dietary
+    ).ok;
   return {
     productIds: [
       ...new Set(
@@ -15,6 +24,7 @@ export function notificationWatch(state) {
               Number(item.quantity) > 0
           )
           .map((item) => item.product_id)
+          .filter(allowed)
       )
     ].sort(),
     location: coordinatesOf(state.location),
@@ -24,7 +34,8 @@ export function notificationWatch(state) {
     alerts: state.alerts
       .filter(
         (alert) =>
-          !alert.zip || alert.zip === state.location?.zip
+          (!alert.zip || alert.zip === state.location?.zip) &&
+          allowed(alert.product_id)
       )
       .map((alert) => ({
         productId: alert.product_id,

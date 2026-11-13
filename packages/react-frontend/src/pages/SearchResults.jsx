@@ -11,6 +11,8 @@ import AddItemToList from "../components/AddItemToList.jsx";
 import LiveProductSearch from "../components/LiveProductSearch.jsx";
 import { DIETARY_FILTERS } from "../data/mock.js";
 import { priceClock } from "../lib/catalog.js";
+import { priceForMembership } from "../lib/compare.js";
+import DietaryNotice from "../components/DietaryNotice.jsx";
 import { useAppState } from "../state/useAppState.js";
 import {
   ageLabel,
@@ -28,6 +30,7 @@ export default function SearchResults() {
   const {
     catalog,
     radiusMi,
+    includeMember,
     dietary,
     toggleDietary,
     clearDietary,
@@ -65,16 +68,17 @@ export default function SearchResults() {
           )
         }))
         .filter((row) => row.store)
+        .map((row) => priceForMembership(row, includeMember))
         .filter((row) =>
           within ? row.store.distance_mi <= radiusMi : true
         )
         .sort(
           (a, b) =>
-            a.price - b.price ||
+            (a.price ?? Infinity) - (b.price ?? Infinity) ||
             a.store.distance_mi - b.store.distance_mi
         )
     : [];
-  const cheapestId = rows[0]?.id;
+  const cheapestId = rows.find((row) => row.price != null)?.id;
 
   return (
     <Screen title="Results" backTo="/">
@@ -152,8 +156,9 @@ export default function SearchResults() {
         <div className="empty">
           <h2>Hidden by a dietary filter</h2>
           <p>
-            {found.primary.name} conflicts with{" "}
-            {status.conflicts.join(", ")}.
+            {status.conflicts.length
+              ? `${found.primary.name} conflicts with ${status.conflicts.join(", ")}.`
+              : `${found.primary.name} lacks supporting information for ${status.missing.join(", ")}.`}
           </p>
           <button
             type="button"
@@ -238,23 +243,32 @@ export default function SearchResults() {
 
       <section className="stack">
         <h2>Catalog products</h2>
+        <DietaryNotice />
         <p className="fine">
           Built-in catalog offers appear here. Live Kroger
           prices appear separately below.
         </p>
         <div className="stack cards-grid">
           {matches.map((product) => {
-            const offers = catalog.prices.filter(
-              (offer) =>
-                offer.product_id === product.id &&
-                !isStale(offer.updated_at, priceClock(offer)) &&
-                offer.in_stock &&
-                catalog.stores.some(
-                  (store) =>
-                    store.id === offer.store_id &&
-                    (!within || store.distance_mi <= radiusMi)
-                )
-            );
+            const offers = catalog.prices
+              .map((row) =>
+                priceForMembership(row, includeMember)
+              )
+              .filter(
+                (offer) =>
+                  offer.product_id === product.id &&
+                  offer.price != null &&
+                  !isStale(
+                    offer.updated_at,
+                    priceClock(offer)
+                  ) &&
+                  offer.in_stock &&
+                  catalog.stores.some(
+                    (store) =>
+                      store.id === offer.store_id &&
+                      (!within || store.distance_mi <= radiusMi)
+                  )
+              );
             const storeNames = [
               ...new Set(
                 offers.map(
@@ -302,8 +316,9 @@ export default function SearchResults() {
           title="Dietary"
           onClose={() => setDietOpen(false)}>
           <p className="muted sheet-note">
-            Conflicting items are hidden. Unverified items stay
-            visible with a warning.
+            Products with conflicts or insufficient supporting
+            dietary information are hidden. Check package labels
+            for allergies.
           </p>
           <div className="stack">
             {DIETARY_FILTERS.map((filter) => (

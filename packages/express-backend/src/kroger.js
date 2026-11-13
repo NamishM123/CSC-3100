@@ -3,9 +3,12 @@ import {
   distanceMiles
 } from "../../react-frontend/src/lib/geo.js";
 import { krogerSearchQueries } from "../../react-frontend/src/lib/krogerSearch.js";
+import { DIETARY_FILTERS } from "../../react-frontend/src/lib/dietary.js";
+import { openDataClient } from "./openData.js";
 
 const BASE = "https://api.kroger.com/v1";
 const MAX_STORES = 5;
+const MAX_MAP_STORES = 50;
 const MAX_QUERIES = 20;
 const MAX_PRODUCTS = 100;
 
@@ -18,6 +21,13 @@ export function validateKrogerRequest(body) {
   const radiusMi = body?.radiusMi;
   const queries = body?.queries;
   const storeId = body?.storeId;
+  const dietary = body?.dietary ?? [];
+  if (
+    !Array.isArray(dietary) ||
+    dietary.length > 4 ||
+    dietary.some((filter) => !DIETARY_FILTERS.includes(filter))
+  )
+    throw failure(400, "Choose supported dietary filters.");
   if (
     !location ||
     typeof radiusMi !== "number" ||
@@ -53,6 +63,7 @@ export function validateKrogerRequest(body) {
     location,
     radiusMi,
     storeId,
+    dietary,
     queries: [...new Set(queries.map((query) => query.trim()))]
   };
 }
@@ -100,6 +111,7 @@ export function normalizeKrogerProducts(rows) {
         return {
           id: `${product.productId}:${item.itemId || product.upc}`,
           productId: product.productId,
+          barcode: product.upc || null,
           name:
             product.description ||
             product.brand ||
@@ -134,7 +146,8 @@ export function normalizeKrogerProducts(rows) {
 export function createKrogerClient({
   env = process.env,
   fetchImpl = fetch,
-  now = Date.now
+  now = Date.now,
+  foodFacts = openDataClient
 } = {}) {
   let token;
   let tokenRequest;
@@ -270,7 +283,7 @@ export function createKrogerClient({
   }
 
   async function compare(body) {
-    const { location, radiusMi, queries, storeId } =
+    const { location, radiusMi, queries, storeId, dietary } =
       validateKrogerRequest(body);
     const deadline = AbortSignal.timeout(45000);
     try {
@@ -312,9 +325,12 @@ export function createKrogerClient({
             a.distance_mi - b.distance_mi ||
             a.id.localeCompare(b.id)
         );
+      const maxStores = queries.length
+        ? MAX_STORES
+        : MAX_MAP_STORES;
       const stores = storeId
         ? nearby.filter((store) => store.id === storeId)
-        : nearby.slice(0, MAX_STORES);
+        : nearby.slice(0, maxStores);
       const jobs = stores.flatMap((store) =>
         queries.map((query) => ({ store, query }))
       );
@@ -348,13 +364,33 @@ export function createKrogerClient({
           }
         )
       );
+      let dietaryLimited = false;
+      if (dietary.length) {
+        const products = stores.flatMap((store) =>
+          store.results.flatMap(
+            (result) => result.products || []
+          )
+        );
+        try {
+          const enrichment = await foodFacts.facts(
+            products.map((product) => product.barcode)
+          );
+          dietaryLimited = enrichment.limited;
+          for (const product of products)
+            product.dietary_facts =
+              enrichment.facts[product.barcode];
+        } catch {
+          dietaryLimited = true;
+        }
+      }
       return {
         stores,
+        dietaryLimited,
         limitedStores:
           !storeId &&
-          (nearby.length > MAX_STORES ||
+          (nearby.length > maxStores ||
             data.data.length === 200),
-        maxStores: MAX_STORES
+        maxStores
       };
     } catch (error) {
       if (error.status) throw error;

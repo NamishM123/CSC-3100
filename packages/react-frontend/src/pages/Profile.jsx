@@ -64,7 +64,8 @@ export default function Profile() {
           Change ZIP
         </button>
         <p className="fine">
-          Showing the San Luis Obispo demo catalog.
+          Live Kroger stores and community grocery locations
+          follow your selected location.
         </p>
       </section>
 
@@ -83,7 +84,9 @@ export default function Profile() {
         <div>
           <h2>Safeway Club</h2>
           <p className="muted">
-            Include member prices in totals.
+            Use marked member prices in catalog prices and
+            totals. This does not link a loyalty account or
+            change Kroger prices.
           </p>
         </div>
         <button
@@ -115,11 +118,19 @@ export default function Profile() {
                   ? "chip on"
                   : "chip"
               }
+              aria-pressed={state.dietary.includes(filter)}
               onClick={() => state.toggleDietary(filter)}>
               {filter}
             </button>
           ))}
         </div>
+        <p className="fine">
+          Filters apply to browsing and recommendations.
+          Products need a supporting dietary claim or ingredient
+          data; conflicts and unknowns are excluded. Barcode
+          checks use Open Food Facts when available. Check
+          package labels for allergies.
+        </p>
       </section>
 
       <section className="profile-block">
@@ -249,8 +260,8 @@ export default function Profile() {
                   if (
                     customRadius.trim() === "" ||
                     !Number.isFinite(miles) ||
-                    miles <= 0 ||
-                    miles > 50
+                    miles < 1 ||
+                    miles > 100
                   ) {
                     return;
                   }
@@ -259,15 +270,15 @@ export default function Profile() {
                   setRadiusOpen(false);
                 }}>
                 <label htmlFor="custom-radius-input">
-                  Enter radius in miles (up to 50)
+                  Enter radius in miles (1 to 100)
                 </label>
 
                 <div className="custom-radius-row">
                   <input
                     id="custom-radius-input"
                     type="number"
-                    min="0.1"
-                    max="50"
+                    min="1"
+                    max="100"
                     step="any"
                     placeholder="e.g. 20"
                     value={customRadius}

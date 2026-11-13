@@ -23,6 +23,7 @@ export default function RoutePlan() {
     acceptedSwapIds: state.acceptedSwapIds,
     radiusMi: state.radiusMi,
     includeMember: state.includeMember,
+    dietary: state.dietary,
     now: state.now
   });
   const stops =

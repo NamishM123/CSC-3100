@@ -9,6 +9,8 @@ import {
   joinNames
 } from "../lib/format.js";
 import { useAppState } from "../state/useAppState.js";
+import { dietaryStatus } from "../lib/dietary.js";
+import DietaryNotice from "../components/DietaryNotice.jsx";
 
 const RADIUS_OPTIONS = [1, 5, 10, 15];
 
@@ -23,16 +25,17 @@ export default function Home() {
     lists,
     items,
     setActiveList,
-    catalog
+    catalog,
+    dietary
   } = useAppState();
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [radiusOpen, setRadiusOpen] = useState(false);
   const [customRadius, setCustomRadius] = useState("");
   const [customSelected, setCustomSelected] = useState(false);
-  const nearby = [...catalog.stores].sort(
-    (a, b) => a.distance_mi - b.distance_mi
-  );
+  const nearby = catalog.stores
+    .filter((store) => store.distance_mi <= radiusMi)
+    .sort((a, b) => a.distance_mi - b.distance_mi);
 
   function runSearch(term) {
     const clean = term.trim();
@@ -116,21 +119,27 @@ export default function Home() {
         <h2>Browse groceries</h2>
       </div>
       <div className="catalog-browse-grid">
-        {catalog.products.map((product) => (
-          <Link
-            className="card catalog-browse-item"
-            key={product.id}
-            to={`/search?q=${encodeURIComponent(product.name)}`}>
-            <img
-              src={product.image_url}
-              alt=""
-              loading="lazy"
-            />
-            <strong>{product.name}</strong>
-            <span className="fine">{product.size_label}</span>
-          </Link>
-        ))}
+        {catalog.products
+          .filter(
+            (product) => dietaryStatus(product, dietary).ok
+          )
+          .map((product) => (
+            <Link
+              className="card catalog-browse-item"
+              key={product.id}
+              to={`/search?q=${encodeURIComponent(product.name)}`}>
+              <img
+                src={product.image_url}
+                alt=""
+                loading="lazy"
+              />
+              <strong>{product.name}</strong>
+              <span className="fine">{product.size_label}</span>
+            </Link>
+          ))}
       </div>
+
+      <DietaryNotice />
 
       <div className="section-title">
         <h2>Your lists</h2>
@@ -218,8 +227,8 @@ export default function Home() {
                   if (
                     customRadius.trim() === "" ||
                     !Number.isFinite(miles) ||
-                    miles <= 0 ||
-                    miles > 50
+                    miles < 1 ||
+                    miles > 100
                   ) {
                     return;
                   }
@@ -228,15 +237,15 @@ export default function Home() {
                   setRadiusOpen(false);
                 }}>
                 <label htmlFor="custom-radius-input">
-                  Enter radius in miles (up to 50)
+                  Enter radius in miles (1 to 100)
                 </label>
 
                 <div className="custom-radius-row">
                   <input
                     id="custom-radius-input"
                     type="number"
-                    min="0.1"
-                    max="50"
+                    min="1"
+                    max="100"
                     step="any"
                     placeholder="e.g. 20"
                     value={customRadius}

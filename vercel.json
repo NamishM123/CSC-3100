@@ -5,7 +5,8 @@
   "outputDirectory": "packages/react-frontend/dist",
   "framework": "vite",
   "functions": {
-    "api/kroger.js": { "maxDuration": 60 }
+    "api/kroger.js": { "maxDuration": 60 },
+    "api/open-data.js": { "maxDuration": 60 }
   },
   "headers": [
     {
@@ -37,6 +38,10 @@
     }
   ],
   "rewrites": [
+    {
+      "source": "/api/open-data",
+      "destination": "/api/open-data"
+    },
     {
       "source": "/api/kroger",
       "destination": "/api/kroger"

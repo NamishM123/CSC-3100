@@ -8,6 +8,7 @@ import {
 import { miles, money } from "../lib/format.js";
 import { useAppState } from "../state/useAppState.js";
 import ScoreRing from "./ScoreRing.jsx";
+import DietaryNotice from "./DietaryNotice.jsx";
 
 export default function KrogerRecommendations({ items }) {
   const state = useAppState();
@@ -25,6 +26,7 @@ export default function KrogerRecommendations({ items }) {
     useKrogerSearch({
       location: state.location,
       radiusMi: state.radiusMi,
+      dietary: state.dietary,
       queries
     });
   useEffect(() => {
@@ -40,6 +42,7 @@ export default function KrogerRecommendations({ items }) {
     items,
     products: state.catalog.products,
     priceWeight: state.krogerPriceWeight,
+    dietary: state.dietary,
     now: Math.max(clock, receivedAt || 0)
   });
   const pricePercent = Math.round(
@@ -86,6 +89,7 @@ export default function KrogerRecommendations({ items }) {
           }
         />
       </label>
+      <DietaryNotice limited={current?.dietaryLimited} />
       <label className="field">
         <span>Search radius (miles)</span>
         <select
@@ -242,6 +246,15 @@ export default function KrogerRecommendations({ items }) {
               </p>
               {line.error ? (
                 <p className="error">{line.error}</p>
+              ) : null}
+              {line.selected?.dietary_facts ? (
+                <a
+                  className="fine"
+                  href={line.selected.dietary_facts.source_url}
+                  target="_blank"
+                  rel="noreferrer">
+                  Dietary data: Open Food Facts (ODbL)
+                </a>
               ) : null}
               {line.truncated ? (
                 <p className="fine">
