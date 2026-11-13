@@ -58,6 +58,29 @@ function positive(value) {
     : null;
 }
 
+function productImage(images = []) {
+  const front =
+    images.find((image) => image.perspective === "front") ||
+    images[0];
+  const sizes = front?.sizes || [];
+  const url = (
+    sizes.find((size) => size.size === "medium") ||
+    sizes.find((size) => size.size === "large") ||
+    sizes[0]
+  )?.url;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "https:" &&
+      ["www.kroger.com", "images.kroger.com"].includes(
+        parsed.hostname
+      )
+      ? parsed.href
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 export function normalizeKrogerProducts(rows) {
   return rows
     .flatMap((product) =>
@@ -75,6 +98,7 @@ export function normalizeKrogerProducts(rows) {
             product.brand ||
             "Unnamed product",
           brand: product.brand || "",
+          image_url: productImage(product.images),
           size_label: item.size || "Size unavailable",
           price:
             promo && (!regular || promo < regular)

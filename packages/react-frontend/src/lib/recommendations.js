@@ -10,7 +10,9 @@ export function listSearchQuery(item, products) {
     ? [product.name, product.size_label]
         .filter(Boolean)
         .join(" ")
-    : item.name || "Unknown item";
+    : [item.name || "Unknown item", item.size_label]
+        .filter(Boolean)
+        .join(" ");
 }
 
 export function rankKrogerStores({

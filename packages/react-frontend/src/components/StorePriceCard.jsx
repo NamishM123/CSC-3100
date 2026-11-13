@@ -11,16 +11,28 @@ export default function StorePriceCard({
   to,
   onClick
 }) {
-  const interaction = Component === "button" ? { type: "button", onClick } : { to };
+  const interaction =
+    Component === "button"
+      ? { type: "button", onClick }
+      : { to };
 
   return (
     <Component className="card price-row" {...interaction}>
       <div>
         <div className="name-line">
           <strong>{row.store.name}</strong>
-          {cheapest ? <span className="badge cheap">Cheapest</span> : null}
-          {row.is_sale ? <span className="badge sale">Sale</span> : null}
-          {stale ? <span className="badge old">{staleLabel}</span> : null}
+          {row.source === "demo" ? (
+            <span className="badge">Sample</span>
+          ) : null}
+          {cheapest ? (
+            <span className="badge cheap">Cheapest</span>
+          ) : null}
+          {row.is_sale ? (
+            <span className="badge sale">Sale</span>
+          ) : null}
+          {stale ? (
+            <span className="badge old">{staleLabel}</span>
+          ) : null}
         </div>
         <p className="muted">{details}</p>
       </div>

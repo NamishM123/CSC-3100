@@ -180,14 +180,6 @@ export default function Profile() {
       <div className="actions">
         <button
           type="button"
-          className="btn ghost"
-          onClick={() => {
-            state.resetDemo();
-          }}>
-          Reset demo lists
-        </button>
-        <button
-          type="button"
           className="btn primary"
           disabled={signingOut}
           onClick={() => logOut()}>

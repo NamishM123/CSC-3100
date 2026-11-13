@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { loadKrogerStores } from "../data/kroger.js";
+import { useKrogerSearch } from "../hooks/useKrogerSearch.js";
 import {
   listSearchQuery,
   rankKrogerStores
@@ -10,9 +10,6 @@ import { useAppState } from "../state/useAppState.js";
 
 export default function KrogerRecommendations({ items }) {
   const state = useAppState();
-  const [response, setResponse] = useState(null);
-  const [failure, setFailure] = useState(null);
-  const [revision, setRevision] = useState(0);
   const [clock, setClock] = useState(Date.now);
   const queries = [
     ...new Set(
@@ -23,12 +20,12 @@ export default function KrogerRecommendations({ items }) {
         )
     )
   ].sort();
-  // Quantity and SKU changes only recalculate scores; they don't repeat API calls.
-  const requestKey = JSON.stringify({
-    location: state.location,
-    radiusMi: state.radiusMi,
-    queries
-  });
+  const { current, error, pending, refresh, receivedAt } =
+    useKrogerSearch({
+      location: state.location,
+      radiusMi: state.radiusMi,
+      queries
+    });
   useEffect(() => {
     const timer = setInterval(
       () => setClock(Date.now()),
@@ -37,71 +34,16 @@ export default function KrogerRecommendations({ items }) {
     return () => clearInterval(timer);
   }, []);
 
-  useEffect(() => {
-    const body = JSON.parse(requestKey);
-    if (
-      !body.location ||
-      !body.queries.length ||
-      body.queries.length > 20
-    )
-      return;
-    const controller = new AbortController();
-    const timer = setTimeout(async () => {
-      try {
-        const result = await loadKrogerStores(
-          body,
-          controller.signal
-        );
-        if (!controller.signal.aborted) {
-          setClock(Date.now());
-          setFailure(null);
-          setResponse({ key: requestKey, revision, result });
-        }
-      } catch (reason) {
-        if (!controller.signal.aborted) {
-          setResponse(null);
-          setFailure({
-            key: requestKey,
-            revision,
-            message:
-              reason.message ||
-              "Kroger search failed. Please retry."
-          });
-        }
-      }
-    }, 400);
-    return () => {
-      clearTimeout(timer);
-      controller.abort();
-    };
-  }, [requestKey, revision]);
-
-  const current =
-    response?.key === requestKey &&
-    response?.revision === revision
-      ? response.result
-      : null;
-  const error =
-    failure?.key === requestKey &&
-    failure?.revision === revision
-      ? failure.message
-      : "";
   const ranked = rankKrogerStores({
     stores: current?.stores || [],
     items,
     products: state.catalog.products,
     priceWeight: state.krogerPriceWeight,
-    now: clock
+    now: Math.max(clock, receivedAt || 0)
   });
   const pricePercent = Math.round(
     (state.krogerPriceWeight ?? 0.7) * 100
   );
-  const pending =
-    queries.length > 0 &&
-    state.location &&
-    queries.length <= 20 &&
-    !current &&
-    !error;
 
   return (
     <section
@@ -116,7 +58,7 @@ export default function KrogerRecommendations({ items }) {
           type="button"
           className="text-link"
           disabled={!!pending || !queries.length}
-          onClick={() => setRevision((value) => value + 1)}>
+          onClick={refresh}>
           Refresh prices
         </button>
       </div>
@@ -240,6 +182,14 @@ export default function KrogerRecommendations({ items }) {
             <div
               className="kroger-product-choice"
               key={line.item.id}>
+              {line.selected?.image_url ? (
+                <img
+                  className="list-product-image"
+                  src={line.selected.image_url}
+                  alt={line.selected.name}
+                  loading="lazy"
+                />
+              ) : null}
               <label className="field">
                 <span>
                   {line.query} × {line.item.quantity}
@@ -305,8 +255,9 @@ export default function KrogerRecommendations({ items }) {
       {current ? (
         <p className="fine">
           Kroger results are separate from the sample catalog.
-          Stock and prices can change before checkout. Refresh
-          after five minutes to keep scoring current.
+          Stock and prices can change before checkout. Prices
+          refresh automatically when you return and every four
+          minutes.
         </p>
       ) : null}
     </section>

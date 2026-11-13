@@ -42,6 +42,38 @@ const json = (data, status = 200) =>
     headers: { "Content-Type": "application/json" }
   });
 
+test("Kroger product images retain trusted HTTPS front images only", () => {
+  const product = {
+    ...rawProduct(),
+    images: [
+      {
+        perspective: "front",
+        sizes: [
+          {
+            size: "medium",
+            url: "https://www.kroger.com/product/images/medium/front/milk"
+          }
+        ]
+      }
+    ]
+  };
+  assert.equal(
+    normalizeKrogerProducts([product])[0].image_url,
+    product.images[0].sizes[0].url
+  );
+  for (const url of [
+    "javascript:alert(1)",
+    "https://untrusted.example/image.jpg",
+    "http://www.kroger.com/image.jpg"
+  ]) {
+    product.images[0].sizes[0].url = url;
+    assert.equal(
+      normalizeKrogerProducts([product])[0].image_url,
+      null
+    );
+  }
+});
+
 function fixture({
   products,
   locations = [location],

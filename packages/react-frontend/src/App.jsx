@@ -26,7 +26,8 @@ import { AppStateProvider } from "./state/AppState.jsx";
 import { useAppState } from "./state/useAppState.js";
 
 function RequireAuth() {
-  const { user, authLoading } = useAppState();
+  const { user, authLoading, listSync, signOut } =
+    useAppState();
   const route = useLocation();
   if (authLoading) return <AuthLoading />;
   if (!user) {
@@ -38,7 +39,66 @@ function RequireAuth() {
       />
     );
   }
-  return <Outlet />;
+  if (!listSync.ready)
+    return (
+      <div className="card stack" role="status">
+        <p>
+          {listSync.status === "error"
+            ? listSync.message
+            : "Loading your saved lists..."}
+        </p>
+        {listSync.status === "error" ? (
+          <button
+            className="btn primary"
+            onClick={listSync.reload}>
+            Retry
+          </button>
+        ) : null}
+        <button
+          className="text-link"
+          onClick={() => {
+            void signOut();
+          }}>
+          Sign out
+        </button>
+      </div>
+    );
+  return (
+    <>
+      <div className="list-sync-status" role="status">
+        {listSync.status === "error" ? (
+          <>
+            <span>{listSync.message}</span>{" "}
+            <button
+              className="text-link"
+              onClick={
+                listSync.conflict
+                  ? listSync.reload
+                  : () => {
+                      void listSync.flush().catch(() => {});
+                    }
+              }>
+              {listSync.conflict
+                ? "Reload saved lists"
+                : "Retry saving"}
+            </button>
+          </>
+        ) : listSync.pending || listSync.status === "saving" ? (
+          "Saving lists..."
+        ) : (
+          "Lists saved to your account"
+        )}
+      </div>
+      {listSync.conflict ? (
+        <p className="banner warn">
+          Reload saved lists to continue. Unsaved changes in
+          this tab will be replaced.
+        </p>
+      ) : (
+        <Outlet />
+      )}
+    </>
+  );
 }
 
 function RequirePlace() {

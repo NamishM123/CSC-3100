@@ -1,4 +1,5 @@
 import { cents, isStale } from "./format.js";
+import { priceClock } from "./catalog.js";
 
 function listedUnit(row, includeMember) {
   if (row.is_member_price && !includeMember) {
@@ -38,7 +39,7 @@ export function freshQuotes({
   prices.forEach((row) => {
     if (row.product_id !== productId) return;
     if (!row.in_stock) return;
-    if (isStale(row.updated_at, now)) return;
+    if (isStale(row.updated_at, priceClock(row, now))) return;
     const store = nearby.find(
       (item) => item.id === row.store_id
     );

@@ -1,0 +1,148 @@
+import { useKrogerSearch } from "../hooks/useKrogerSearch.js";
+import { rankKrogerStores } from "../lib/recommendations.js";
+import { dietaryStatus } from "../lib/search.js";
+import { miles, money } from "../lib/format.js";
+import { useAppState } from "../state/useAppState.js";
+import AddItemToList from "./AddItemToList.jsx";
+
+export default function LiveProductSearch({ query: rawQuery }) {
+  const query = rawQuery.trim();
+  const state = useAppState();
+  const valid = query.trim().length > 0 && query.length <= 120;
+  const { current, pending, error, refresh, receivedAt } =
+    useKrogerSearch({
+      location: state.location,
+      radiusMi: state.radiusMi,
+      queries: valid ? [query] : []
+    });
+  const rows = rankKrogerStores({
+    stores: current?.stores || [],
+    items: [{ id: "search", query, quantity: 1 }],
+    products: [],
+    now: Math.max(state.now, receivedAt || 0)
+  });
+  return (
+    <section className="stack" aria-busy={pending}>
+      <div className="section-title">
+        <h2>Live Kroger products</h2>
+        <button
+          className="text-link"
+          type="button"
+          disabled={pending || !valid}
+          onClick={refresh}>
+          Refresh prices
+        </button>
+      </div>
+      <p className="muted">
+        Current store-specific results within {state.radiusMi}{" "}
+        miles. Select a product to save its store choice to your
+        list.
+      </p>
+      {!valid ? <p>Search using 1–120 characters.</p> : null}
+      {pending ? (
+        <p role="status">Searching Kroger stores...</p>
+      ) : null}
+      {error ? (
+        <p role="alert" className="error">
+          {error}
+        </p>
+      ) : null}
+      {current && !rows.length ? (
+        <p>No nearby Kroger stores in this radius.</p>
+      ) : null}
+      {rows.map(({ store, lines }) => {
+        const line = lines[0];
+        return (
+          <div className="stack" key={store.id}>
+            <h3>
+              {store.name} · {miles(store.distance_mi)}
+            </h3>
+            <p className="muted">{store.address}</p>
+            {line.error ? (
+              <p role="alert">{line.error}</p>
+            ) : !line.options.length ? (
+              <p>No matching products at this store.</p>
+            ) : null}
+            {line.truncated ? (
+              <p className="fine">
+                Results limited. Include a brand or size to
+                narrow your search.
+              </p>
+            ) : null}
+            <div className="cards-grid stack">
+              {line.options
+                .filter(
+                  (product) =>
+                    dietaryStatus(product, state.dietary).ok
+                )
+                .map((product) => {
+                  const exactQuery = [
+                    product.name,
+                    product.size_label === "Size unavailable"
+                      ? ""
+                      : product.size_label
+                  ]
+                    .filter(Boolean)
+                    .join(" ");
+                  const fresh =
+                    line.status !==
+                      "Refresh prices to check availability" &&
+                    !line.error;
+                  return (
+                    <article
+                      className="card search-product-card"
+                      key={product.id}>
+                      {product.image_url ? (
+                        <img
+                          src={product.image_url}
+                          alt={product.name}
+                          loading="lazy"
+                        />
+                      ) : null}
+                      <div>
+                        <strong>{product.name}</strong>
+                        <p className="muted">
+                          {product.size_label}
+                        </p>
+                        <p>
+                          {fresh
+                            ? money(product.price)
+                            : "Refresh prices"}{" "}
+                          ·{" "}
+                          {product.availability === "in_stock"
+                            ? "In stock"
+                            : product.availability ===
+                                "out_of_stock"
+                              ? "Out of stock"
+                              : "Stock unconfirmed"}
+                        </p>
+                        {state.dietary.length ? (
+                          <p className="fine">
+                            Dietary information unverified.
+                          </p>
+                        ) : null}
+                        <AddItemToList
+                          request={{
+                            query:
+                              exactQuery.length <= 120
+                                ? exactQuery
+                                : query,
+                            name: product.name,
+                            image_url: product.image_url,
+                            size_label: product.size_label,
+                            storeSelections: {
+                              [store.id]: product.id
+                            }
+                          }}
+                        />
+                      </div>
+                    </article>
+                  );
+                })}
+            </div>
+          </div>
+        );
+      })}
+    </section>
+  );
+}

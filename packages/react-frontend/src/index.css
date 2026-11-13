@@ -1969,3 +1969,51 @@ button:disabled {
   background: var(--surface, #fff);
   color: inherit;
 }
+
+.list-sync-status {
+  padding: 10px 20px;
+  font-size: 0.85rem;
+  text-align: center;
+  background: #f0f5ec;
+  color: #36583b;
+}
+
+.catalog-browse-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 12px;
+}
+
+.catalog-browse-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.catalog-browse-item img {
+  width: 100%;
+  height: 100px;
+  object-fit: contain;
+  border-radius: 12px;
+}
+
+.search-product-card {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.search-product-card > img {
+  width: 88px;
+  height: 88px;
+  object-fit: contain;
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+.search-product-card > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

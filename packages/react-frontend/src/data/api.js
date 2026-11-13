@@ -12,8 +12,8 @@
 // prices: id, store_id, product_id, price, regular_price,
 //   unit_price, unit, is_member_price, is_sale, in_stock,
 //   updated_at, source
-// Lists stay local to the verified account. The prototype list tables lack
-// enforceable ownership and must never be loaded as a shared catalog.
+// Lists use account_list_state through savedLists.js, never this public loader.
+// The legacy prototype list tables must never be loaded as a shared catalog.
 // price_history (optional): id, product_id, store_id,
 //   recorded_on, price
 // product_swaps (optional): id, product_id, store_id, name,

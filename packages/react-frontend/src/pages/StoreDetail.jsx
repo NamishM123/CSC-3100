@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import Screen from "../components/Screen.jsx";
-import { DEMO_NOW } from "../data/mock.js";
+import { priceClock } from "../lib/catalog.js";
 import { ageLabel, miles, money } from "../lib/format.js";
 import { productMatchesQuery } from "../lib/search.js";
 import { useAppState } from "../state/useAppState.js";
@@ -59,7 +59,7 @@ export default function StoreDetail() {
       <p className="muted">
         {store.drive_minutes} min drive
         {newest
-          ? ` | prices updated ${ageLabel(newest.updated_at, DEMO_NOW)}`
+          ? ` | prices updated ${ageLabel(newest.updated_at, priceClock(newest))}`
           : ""}
       </p>
       <form
@@ -84,9 +84,13 @@ export default function StoreDetail() {
             to={`/product/${row.product.id}`}>
             <div>
               <strong>{row.product.name}</strong>
+              {row.source === "demo" ? (
+                <span className="badge">Sample</span>
+              ) : null}
               <p className="muted">
                 {row.in_stock ? "In stock" : "Out of stock"} |
-                updated {ageLabel(row.updated_at, DEMO_NOW)}
+                updated{" "}
+                {ageLabel(row.updated_at, priceClock(row))}
               </p>
             </div>
             <div className="price-col">
