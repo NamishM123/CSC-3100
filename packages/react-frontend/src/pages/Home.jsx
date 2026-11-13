@@ -11,6 +11,7 @@ import {
 import { useAppState } from "../state/useAppState.js";
 import { dietaryStatus } from "../lib/dietary.js";
 import DietaryNotice from "../components/DietaryNotice.jsx";
+import { storeItemsPath } from "../lib/storeLinks.js";
 
 const RADIUS_OPTIONS = [1, 5, 10, 15];
 
@@ -110,7 +111,7 @@ export default function Home() {
             key={store.id}
             store={store}
             variant="drive"
-            to={`/stores/${store.id}`}
+            to={storeItemsPath(store)}
           />
         ))}
       </div>

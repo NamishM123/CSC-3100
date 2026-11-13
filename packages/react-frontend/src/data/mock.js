@@ -122,7 +122,7 @@ export const stores = [
     drive_minutes: 10,
     hours_label: "Open until 10 PM"
   }
-];
+].map((store) => ({ ...store, source: "demo" }));
 
 export const products = [
   ...builtInProducts,

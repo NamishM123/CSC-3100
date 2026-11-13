@@ -14,6 +14,8 @@ import {
   catalogForLocation
 } from "../lib/catalog.js";
 import { useMapLocation } from "../hooks/useMapLocation.js";
+import { useKrogerLocations } from "../hooks/useKrogerLocations.js";
+import { useOpenData } from "../hooks/useOpenData.js";
 import {
   loadAccountState,
   saveAccountState,
@@ -112,10 +114,30 @@ export function AppStateProvider({ children }) {
 function AccountStateProvider({ auth, children }) {
   const userId = auth.user?.id;
   const [state, setState] = useState(() => loadInitial(userId));
-  const { place } = useMapLocation(state.location);
+  const mapLocation = useMapLocation(state.location);
+  const { place } = mapLocation;
+  const discoveryPlace =
+    userId && !auth.mfaRequired ? place : null;
+  const kroger = useKrogerLocations(
+    discoveryPlace,
+    state.radiusMi
+  );
+  const community = useOpenData(
+    discoveryPlace
+      ? {
+          action: "stores",
+          location: discoveryPlace,
+          radiusMi: Math.max(1, state.radiusMi)
+        }
+      : null
+  );
   const catalog = useMemo(
-    () => catalogForLocation(state.catalog, place),
-    [state.catalog, place]
+    () =>
+      catalogForLocation(state.catalog, place, [
+        ...kroger.stores,
+        ...(community.data?.stores || [])
+      ]),
+    [state.catalog, place, kroger.stores, community.data]
   );
   const [now, setNow] = useState(Date.now);
   const listSync = useSavedLists(userId, state, setState);
@@ -163,6 +185,7 @@ function AccountStateProvider({ auth, children }) {
     ...state,
     ...auth,
     catalog,
+    storeDirectory: { mapLocation, kroger, community },
     location: place || state.location,
     refreshCatalog,
     listSync,

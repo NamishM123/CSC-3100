@@ -24,9 +24,21 @@ export default function StoreDetail() {
   const { catalog, dietary, includeMember } = useAppState();
   const [query, setQuery] = useState("");
   const store = catalog.stores.find(
-    (entry) => entry.id === storeId
+    (entry) =>
+      entry.id === storeId ||
+      entry.alternate_ids?.includes(storeId)
   );
 
+  if (store?.source === "weekly-ads")
+    return <WeeklyAdDetail key={store.id} storeId={store.id} />;
+  if (store?.source === "kroger")
+    return (
+      <KrogerStoreDetail key={store.id} storeId={store.id} />
+    );
+  if (store?.source === "openstreetmap")
+    return (
+      <CommunityStoreDetail key={store.id} storeId={store.id} />
+    );
   if (params.get("source") === "kroger") {
     return (
       <KrogerStoreDetail key={storeId} storeId={storeId} />
