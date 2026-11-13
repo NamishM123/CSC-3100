@@ -140,8 +140,9 @@ export default function Stores() {
       ) : null}
       {kroger.limitedStores ? (
         <p className="fine">
-          Showing the nearest {kroger.maxStores} Kroger family
-          stores.
+          Showing {kroger.stores.length} Kroger family stores.
+          Kroger&apos;s location search reached its result
+          limit.
         </p>
       ) : null}
       <div

@@ -60,11 +60,12 @@ new API keys:
   narrower coverage.
 - [Open Prices](https://prices.openfoodfacts.org/api/docs)
   supplies store-specific community price reports. Mapped store
-  pages show up to 50 recent USD reports from the last 90 days,
-  with observation dates, source links, units, and discount
-  notices. These reports never confirm current stock or enter
-  confirmed basket totals. Many stores have no reports.
-  Responses cache for 10 minutes.
+  pages load up to the latest 50 USD reports with no age cutoff,
+  keeping the newest report for each item, with observation
+  dates, source links, units, and discount notices. These
+  reports never confirm current stock or enter confirmed basket
+  totals. Many stores have no reports. Responses cache for 10
+  minutes.
 - [Open Food Facts](https://openfoodfacts.github.io/documentation/docs/Product-Opener/api/)
   supplies dietary facts by exact barcode when filters are
   active. Facts are requested only for returned products, with
@@ -94,7 +95,7 @@ local Express and both Vercel root-directory layouts. Requests
 use fixed upstream hosts and validated coordinates or OSM
 identities. Deploy the new endpoint alongside the frontend. No
 database migration is needed. Run `npm run dev:local` for both
-APIs locally. Kroger map discovery now returns up to 50
+APIs locally. Kroger map discovery now returns up to 200
 locations; SKU price comparisons remain limited to the nearest
 five stores.
 
@@ -949,7 +950,7 @@ The store map and list automatically request nearby Kroger
 family stores through the authenticated `/api/kroger` endpoint
 using the selected coordinates and radius. This location-only
 request uses `queries: []`, so no shopping list or product
-search is required. It shows up to the nearest 50 Kroger family
+search is required. It shows up to the nearest 200 Kroger family
 stores and requires `KROGER_CLIENT_ID` and
 `KROGER_CLIENT_SECRET` on the server. Loading, API failures with
 retry, and no nearby Kroger locations are shown explicitly.

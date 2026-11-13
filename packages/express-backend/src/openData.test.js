@@ -90,7 +90,7 @@ test("community stores validate inputs, preserve real locations, cache requests,
   );
 });
 
-test("Open Prices observations are store-specific USD reports with real dates and no stock claims", async () => {
+test("Open Prices keeps each item's newest report regardless of age, with store, currency, and future-date checks", async () => {
   let requestUrl;
   const row = {
     id: 1,
@@ -107,7 +107,7 @@ test("Open Prices observations are store-specific USD reports with real dates an
     fetchImpl: async (url) => {
       requestUrl = new URL(url);
       return json({
-        total: 7,
+        total: 8,
         items: [
           row,
           { ...row, id: 2, date: "2026-11-09", price: "2.00" },
@@ -115,16 +115,35 @@ test("Open Prices observations are store-specific USD reports with real dates an
           { ...row, currency: "EUR" },
           { ...row, date: "2026-12-01" },
           { ...row, date: "2020-01-01" },
+          {
+            ...row,
+            id: 3,
+            product_code: "999999999999",
+            product: {
+              product_name: "Coffee",
+              quantity: "1 lb"
+            },
+            date: "2026-06-25",
+            price: "7.00"
+          },
           { ...row, price: "NaN" }
         ]
       });
     }
   });
   const result = await client.prices("osm-node-123");
-  assert.equal(result.offers.length, 1);
+  assert.equal(result.offers.length, 2);
   assert.equal(result.offers[0].price, 3.5);
   assert.equal(result.offers[0].observed_on, "2026-11-10");
   assert.equal(result.offers[0].availability, "unknown");
+  assert.equal(result.offers[1].name, "Coffee");
+  assert.equal(result.offers[1].observed_on, "2026-06-25");
+  assert.equal(result.offers[1].price, 7);
+  assert.equal(requestUrl.searchParams.has("date__gte"), false);
+  assert.equal(
+    requestUrl.searchParams.get("order_by"),
+    "-date"
+  );
   assert.equal(
     requestUrl.searchParams.get("location_osm_type"),
     "NODE"

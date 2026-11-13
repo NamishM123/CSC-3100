@@ -8,7 +8,7 @@ import { openDataClient } from "./openData.js";
 
 const BASE = "https://api.kroger.com/v1";
 const MAX_STORES = 5;
-const MAX_MAP_STORES = 50;
+const MAX_LOCATION_RESULTS = 200;
 const MAX_QUERIES = 20;
 const MAX_PRODUCTS = 100;
 
@@ -292,7 +292,7 @@ export function createKrogerClient({
         {
           "filter.latLong.near": `${location.latitude},${location.longitude}`,
           "filter.radiusInMiles": String(Math.ceil(radiusMi)),
-          "filter.limit": "200"
+          "filter.limit": String(MAX_LOCATION_RESULTS)
         },
         AbortSignal.any([deadline, AbortSignal.timeout(10000)])
       );
@@ -327,7 +327,13 @@ export function createKrogerClient({
         );
       const maxStores = queries.length
         ? MAX_STORES
-        : MAX_MAP_STORES;
+        : MAX_LOCATION_RESULTS;
+      const locationTotal = data.meta?.pagination?.total;
+      const locationResultsLimited = Number.isFinite(
+        locationTotal
+      )
+        ? locationTotal > data.data.length
+        : data.data.length >= MAX_LOCATION_RESULTS;
       const stores = storeId
         ? nearby.filter((store) => store.id === storeId)
         : nearby.slice(0, maxStores);
@@ -388,8 +394,7 @@ export function createKrogerClient({
         dietaryLimited,
         limitedStores:
           !storeId &&
-          (nearby.length > maxStores ||
-            data.data.length === 200),
+          (nearby.length > maxStores || locationResultsLimited),
         maxStores
       };
     } catch (error) {
