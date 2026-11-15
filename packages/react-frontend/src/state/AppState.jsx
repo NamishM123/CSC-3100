@@ -106,6 +106,36 @@ function applyRemote(current, remote) {
   return { ...current, catalog };
 }
 
+// Union rows by id, incoming (Kroger) overriding a same-id demo row.
+function unionById(existing, incoming) {
+  if (!incoming?.length) return existing;
+  const byId = new Map(
+    (existing || []).map((row) => [row.id, row])
+  );
+  for (const row of incoming) byId.set(row.id, row);
+  return [...byId.values()];
+}
+
+// Kroger is an ADDITIONAL price source, not a replacement: merge its
+// stores/products/prices into the existing catalog so a search for, say,
+// bananas still shows the demo stores as other fronts to compare against
+// the live Kroger price. (Supabase keeps replace semantics via applyRemote;
+// only the Kroger path uses this.)
+function mergeKroger(current, remote) {
+  const catalog = { ...current.catalog };
+  catalog.store_chains = unionById(
+    catalog.store_chains,
+    remote.store_chains
+  );
+  catalog.stores = unionById(catalog.stores, remote.stores);
+  catalog.products = unionById(
+    catalog.products,
+    remote.products
+  );
+  catalog.prices = unionById(catalog.prices, remote.prices);
+  return { ...current, catalog };
+}
+
 const STAPLE_TERMS = [
   "milk",
   "eggs",
@@ -179,7 +209,7 @@ function AccountStateProvider({ auth, children }) {
     setState((prev) => {
       let next = prev;
       if (supabase) next = applyRemote(next, supabase);
-      if (kroger) next = applyRemote(next, kroger);
+      if (kroger) next = mergeKroger(next, kroger);
       return next;
     });
   }, []);
@@ -217,7 +247,7 @@ function AccountStateProvider({ auth, children }) {
       signal: controller.signal
     }).then((remote) => {
       if (remote)
-        setState((current) => applyRemote(current, remote));
+        setState((current) => mergeKroger(current, remote));
     });
     return () => controller.abort();
   }, [zip, radiusMi, userId]);

@@ -21,7 +21,12 @@ const UPDATED = {
   "store-sw": "2026-10-05T14:41:00.000Z",
   "store-go": "2026-10-05T13:41:00.000Z",
   "store-v": "2026-10-05T11:41:00.000Z",
-  "store-fm": "2026-09-26T16:41:00.000Z"
+  "store-fm": "2026-09-26T16:41:00.000Z",
+  "store-wf": "2026-10-05T12:41:00.000Z",
+  "store-tg": "2026-10-05T15:41:00.000Z",
+  "store-wm": "2026-10-04T18:41:00.000Z",
+  "store-co": "2026-10-03T16:41:00.000Z",
+  "store-al": "2026-10-05T10:41:00.000Z"
 };
 
 const KNOWN_ZIPS = {
@@ -48,7 +53,16 @@ export const store_chains = [
   { id: "chain-sw", name: "Safeway", code: "SW" },
   { id: "chain-go", name: "Grocery Outlet", code: "GO" },
   { id: "chain-v", name: "Vons", code: "V" },
-  { id: "chain-fm", name: "FoodMaxx", code: "FM" }
+  { id: "chain-fm", name: "FoodMaxx", code: "FM" },
+  { id: "chain-wf", name: "Whole Foods Market", code: "WF" },
+  { id: "chain-tg", name: "Target", code: "TG" },
+  {
+    id: "chain-wm",
+    name: "Walmart Neighborhood Market",
+    code: "WM"
+  },
+  { id: "chain-co", name: "Costco", code: "CO" },
+  { id: "chain-al", name: "Albertsons", code: "AL" }
 ];
 
 export const stores = [
@@ -121,6 +135,76 @@ export const stores = [
     distance_mi: 3.1,
     drive_minutes: 10,
     hours_label: "Open until 10 PM"
+  },
+  {
+    id: "store-wf",
+    chain_id: "chain-wf",
+    name: "Whole Foods Market",
+    address: "1118 Marsh St",
+    city: "San Luis Obispo",
+    state: "CA",
+    zip: "93401",
+    latitude: 35.2789,
+    longitude: -120.6648,
+    distance_mi: 2.7,
+    drive_minutes: 9,
+    hours_label: "Open until 9 PM"
+  },
+  {
+    id: "store-tg",
+    chain_id: "chain-tg",
+    name: "Target",
+    address: "11990 Los Osos Valley Rd",
+    city: "San Luis Obispo",
+    state: "CA",
+    zip: "93405",
+    latitude: 35.2456,
+    longitude: -120.6889,
+    distance_mi: 1.6,
+    drive_minutes: 6,
+    hours_label: "Open until 10 PM"
+  },
+  {
+    id: "store-wm",
+    chain_id: "chain-wm",
+    name: "Walmart Neighborhood Market",
+    address: "1540 Froom Ranch Way",
+    city: "San Luis Obispo",
+    state: "CA",
+    zip: "93405",
+    latitude: 35.2389,
+    longitude: -120.6912,
+    distance_mi: 3.8,
+    drive_minutes: 11,
+    hours_label: "Open until 11 PM"
+  },
+  {
+    id: "store-co",
+    chain_id: "chain-co",
+    name: "Costco",
+    address: "1540 Auto Park Way",
+    city: "San Luis Obispo",
+    state: "CA",
+    zip: "93405",
+    latitude: 35.2347,
+    longitude: -120.6978,
+    distance_mi: 4.5,
+    drive_minutes: 13,
+    hours_label: "Open until 8:30 PM"
+  },
+  {
+    id: "store-al",
+    chain_id: "chain-al",
+    name: "Albertsons",
+    address: "771 Foothill Blvd",
+    city: "San Luis Obispo",
+    state: "CA",
+    zip: "93405",
+    latitude: 35.2862,
+    longitude: -120.6719,
+    distance_mi: 2.1,
+    drive_minutes: 7,
+    hours_label: "Open until 11 PM"
   }
 ];
 
@@ -775,7 +859,111 @@ export const prices = [
   row("store-go", "prod-bagels", 2.29),
   row("store-fm", "prod-bagels", 2.49),
   row("store-v", "prod-bagels", 3.29),
-  row("store-sw", "prod-bagels", 3.49)
+  row("store-sw", "prod-bagels", 3.49),
+
+  // Added stores (Whole Foods, Target, Walmart, Costco, Albertsons)
+  // give common items many more fronts to compare side by side.
+  //
+  // For the six "Weekly groceries" staples, these stores are priced at
+  // or above the cheapest fresh store, and each one is missing one
+  // staple, so the demo's headline plan stays Trader Joe's + Grocery
+  // Outlet ($17.62 split vs $21.47 single). The budget stores still win
+  // non-list items (apples, avocado, chicken, coffee) for realism.
+  row("store-wm", "prod-bananas", 0.21, {
+    unit_price: 0.64,
+    unit: "lb"
+  }),
+  row("store-co", "prod-bananas", 0.22, {
+    unit_price: 0.66,
+    unit: "lb"
+  }),
+  row("store-al", "prod-bananas", 0.26),
+  row("store-tg", "prod-bananas", 0.27),
+  row("store-wf", "prod-bananas", 0.33, {
+    unit_price: 0.99,
+    unit: "lb"
+  }),
+
+  row("store-wm", "prod-organic-bananas", 0.28, { unit: "lb" }),
+  row("store-co", "prod-organic-bananas", 0.25, { unit: "lb" }),
+  row("store-wf", "prod-organic-bananas", 0.36, { unit: "lb" }),
+
+  // milk: omitted at Whole Foods
+  row("store-wm", "prod-milk", 4.09, {
+    unit_price: 4.09,
+    unit: "gal"
+  }),
+  row("store-tg", "prod-milk", 4.19, {
+    unit_price: 4.19,
+    unit: "gal"
+  }),
+  row("store-co", "prod-milk", 4.29, {
+    unit_price: 4.29,
+    unit: "gal"
+  }),
+  row("store-al", "prod-milk", 4.79, {
+    unit_price: 4.79,
+    unit: "gal"
+  }),
+
+  // eggs: omitted at Target
+  row("store-wm", "prod-eggs", 3.59),
+  row("store-co", "prod-eggs", 3.69),
+  row("store-al", "prod-eggs", 4.49),
+  row("store-wf", "prod-eggs", 5.49),
+
+  // bread: omitted at Walmart
+  row("store-tg", "prod-bread", 3.49),
+  row("store-co", "prod-bread", 3.99),
+  row("store-al", "prod-bread", 4.29),
+  row("store-wf", "prod-bread", 4.99),
+
+  // peanut butter: omitted at Costco
+  row("store-wm", "prod-pb", 3.19),
+  row("store-tg", "prod-pb", 3.29),
+  row("store-al", "prod-pb", 3.99),
+  row("store-wf", "prod-pb", 4.99),
+
+  // spinach: omitted at Albertsons
+  row("store-wm", "prod-spinach", 2.89),
+  row("store-tg", "prod-spinach", 2.89),
+  row("store-co", "prod-spinach", 2.99),
+  row("store-wf", "prod-spinach", 3.49),
+
+  row("store-wm", "prod-apples", 2.79),
+  row("store-tg", "prod-apples", 2.99),
+  row("store-co", "prod-apples", 3.49),
+  row("store-al", "prod-apples", 3.69),
+  row("store-wf", "prod-apples", 4.49),
+
+  row("store-wm", "prod-avocado", 0.69),
+  row("store-tg", "prod-avocado", 0.79),
+  row("store-co", "prod-avocado", 0.99),
+  row("store-al", "prod-avocado", 1.19),
+  row("store-wf", "prod-avocado", 1.49),
+
+  row("store-co", "prod-chicken", 2.79, {
+    unit_price: 2.79,
+    unit: "lb"
+  }),
+  row("store-wm", "prod-chicken", 3.19, {
+    unit_price: 3.19,
+    unit: "lb"
+  }),
+  row("store-al", "prod-chicken", 3.89, {
+    unit_price: 3.89,
+    unit: "lb"
+  }),
+  row("store-wf", "prod-chicken", 6.99, {
+    unit_price: 6.99,
+    unit: "lb"
+  }),
+
+  row("store-co", "prod-coffee", 4.49),
+  row("store-wm", "prod-coffee", 5.29),
+  row("store-tg", "prod-coffee", 5.79),
+  row("store-al", "prod-coffee", 7.29),
+  row("store-wf", "prod-coffee", 8.99)
 ];
 
 export const shopping_lists = [
