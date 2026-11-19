@@ -31,8 +31,8 @@ export function distanceMiles(from, to) {
   const h =
     Math.sin(lat / 2) ** 2 +
     Math.cos(radians(a.latitude)) *
-      Math.cos(radians(b.latitude)) *
-      Math.sin(lon / 2) ** 2;
+    Math.cos(radians(b.latitude)) *
+    Math.sin(lon / 2) ** 2;
   return (
     2 *
     EARTH_RADIUS_MI *
@@ -41,6 +41,14 @@ export function distanceMiles(from, to) {
 }
 
 export function nearbyStores(stores, place, radiusMi) {
+
+  if (!place && !radiusMi) {
+    return stores.map(store => ({
+      ...store,
+      distance_mi: null
+    }))
+  }
+
   const coordinates = coordinatesOf(place);
   const radius = Number(radiusMi);
   if (

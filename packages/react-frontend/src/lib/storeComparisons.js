@@ -122,6 +122,12 @@ export function buildComparisonStores({
     location,
     radiusMi
   );
+
+  for (const price of catalog.prices) {
+    const store = catalog.stores.find(
+      s => s.id === price.store_id
+    );
+  }
   return stores.map((store) => {
     const localProducts = catalog.prices
       .filter((price) => price.store_id === store.id)
@@ -212,8 +218,8 @@ export function buildComparisonStores({
           "No recent matching community price report; store availability is unknown.",
         feedWarnings: result?.limited
           ? [
-              "Only the latest 50 community price reports are available."
-            ]
+            "Only the latest 50 community price reports are available."
+          ]
           : []
       };
     }
@@ -283,8 +289,8 @@ function evidenceStatus(product, now, today = pacificDay(now)) {
 function purchase(product, quantity) {
   const bundle =
     Number.isFinite(product.price_quantity) &&
-    product.price_quantity >= 1 &&
-    product.price_quantity <= 100
+      product.price_quantity >= 1 &&
+      product.price_quantity <= 100
       ? product.price_quantity
       : 1;
   const purchased = Math.ceil(quantity / bundle) * bundle;
@@ -320,11 +326,11 @@ function scoreRows(rows, active, weight) {
       : 0;
     row.score = row.matched
       ? Math.round(
-          100 *
-            row.coverage *
-            (weight * row.priceScore +
-              (1 - weight) * row.distanceScore)
-        )
+        100 *
+        row.coverage *
+        (weight * row.priceScore +
+          (1 - weight) * row.distanceScore)
+      )
       : 0;
   });
 }
@@ -424,8 +430,8 @@ export function rankStoreBaskets({
         (explicitWeight && units.includes(explicitWeight)
           ? explicitWeight
           : [...counts].sort(
-              (a, b) => b[1] - a[1] || a[0].localeCompare(b[0])
-            )[0]?.[0]) ||
+            (a, b) => b[1] - a[1] || a[0].localeCompare(b[0])
+          )[0]?.[0]) ||
         "item";
       return { unit, units: [...new Set([unit, ...units])] };
     });
@@ -442,7 +448,7 @@ export function rankStoreBaskets({
         .sort(
           (a, b) =>
             purchase(a, line.item.quantity).cost -
-              purchase(b, line.item.quantity).cost ||
+            purchase(b, line.item.quantity).cost ||
             a.name.localeCompare(b.name) ||
             a.id.localeCompare(b.id)
         );
@@ -514,17 +520,17 @@ export function rankStoreBaskets({
                         : allOut
                           ? "Out of stock"
                           : line.candidates.length &&
-                              !line.options.length
+                            !line.options.length
                             ? "No matching products meet the dietary filters"
                             : line.options.length
                               ? evidenceStatus(
-                                  line.options[0],
-                                  now,
-                                  today
-                                ) ||
-                                "No comparable priced offer"
+                                line.options[0],
+                                now,
+                                today
+                              ) ||
+                              "No comparable priced offer"
                               : store.noDataMessage ||
-                                "No matching priced item in the available data";
+                              "No matching priced item in the available data";
       return {
         ...line,
         selected,
