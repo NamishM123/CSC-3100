@@ -33,6 +33,11 @@ export default defineConfig(({ command, mode }) => {
   }
   return {
     plugins: [react()],
+    test: {
+      globals: true,
+      environment: "jsdom",
+      setupFiles: "./src/setupTests.js"
+    },
     server: { proxy: { "/api": "http://127.0.0.1:8000" } }
   };
 });

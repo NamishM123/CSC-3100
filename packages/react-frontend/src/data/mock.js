@@ -496,10 +496,10 @@ function buildPriceHistory() {
     const series = crafted
       ? BANANA_TJ
       : wave(
-          roundMoney(priceRow.price + 0.04),
-          priceRow.price,
-          30
-        );
+        roundMoney(priceRow.price + 0.04),
+        priceRow.price,
+        30
+      );
     series.forEach((value, index) => {
       rows.push({
         id: `hist-${priceRow.id}-${index}`,

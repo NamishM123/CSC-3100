@@ -75,8 +75,8 @@ function RequireAuth() {
                 listSync.conflict
                   ? listSync.reload
                   : () => {
-                      void listSync.flush().catch(() => {});
-                    }
+                    void listSync.flush().catch(() => { });
+                  }
               }>
               {listSync.conflict
                 ? "Reload saved lists"
@@ -116,7 +116,7 @@ function RequirePlace() {
   return <Outlet />;
 }
 
-function AppRoutes() {
+export function AppRoutes() {
   return (
     <Routes>
       <Route element={<PhoneShell />}>
