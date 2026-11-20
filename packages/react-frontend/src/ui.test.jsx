@@ -39,7 +39,7 @@ vi.mock("./hooks/useSavedLists.js", () => ({
     })
 }));
 
-test("user can search for and select grapes", async () => {
+test("user can search for and select banana", async () => {
     const user = userEvent.setup();
     render(<App />);
 
@@ -56,7 +56,7 @@ test("user can search for and select grapes", async () => {
     ).toBeInTheDocument();
 });
 
-test("user can compare grape prices between stores", async () => {
+test("user can compare banana prices between stores", async () => {
     const user = userEvent.setup();
     render(<App />);
 
